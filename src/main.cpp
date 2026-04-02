@@ -58,8 +58,11 @@ int main(int argc, char **argv)
   int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
   std::cout << "Client connected\n";
 
-  send(client_fd, "+PONG\r\n", 7, 0);
-
+  char buffer[1024];
+  while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
+  {
+    send(client_fd, "+PONG\r\n", 7, 0); // Keep the connection open until the client disconnects
+  }
   close(server_fd);
   close(client_fd);
 
