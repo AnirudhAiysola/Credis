@@ -7,6 +7,18 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <thread>
+
+void handle_client(int client_fd)
+{
+  std::cout << "Client connected, fd: " << client_fd << "\n";
+  char buffer[1024];
+  while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
+  {
+    send(client_fd, "+PONG\r\n", 7, 0);
+  }
+  close(client_fd);
+}
 
 int main(int argc, char **argv)
 {
@@ -56,12 +68,11 @@ int main(int argc, char **argv)
   std::cout << "Logs from your program will appear here!\n";
 
   int client_fd;
+
   while ((client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len)) >= 0)
   {
-    std::cout << "Client connected!\n";
-
-    send(client_fd, "+PONG\r\n", 7, 0);
-    close(client_fd);
+    std::thread t(handle_client, client_fd);
+    t.detach();
   }
 
   close(server_fd);
