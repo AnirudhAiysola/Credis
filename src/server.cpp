@@ -30,8 +30,7 @@ void handle_client(int client_fd)
     char buffer[1024];
     while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
     {
-        int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
-        std::string input(buffer, bytes);
+        std::string input(buffer);
         std::vector<std::string> parsed = parse_resp(input);
         std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper); // Convert command to uppercase for case-insensitive comparison
         if (parsed[0] == "SET" && parsed.size() > 3)
