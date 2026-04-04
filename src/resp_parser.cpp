@@ -36,7 +36,10 @@ std::vector<std::string> parse_resp(const std::string &buffer)
         if (!line.empty() && line.back() == '\r')
             line.pop_back();
         std::cout << "Parsed line: " << line << "\n";
-        result.push_back(line);
+        if (!line.empty())
+        {
+            result.push_back(line);
+        }
     }
     return result;
 }
