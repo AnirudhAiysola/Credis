@@ -78,7 +78,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
     else if (parsed[0] == "RPUSH")
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
-        if (kv_store.count(parsed[1]) && std::holds_alternative<std::string>(kv_store[parsed[1]]))
+        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]))
         {
             send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
             return;
@@ -93,6 +93,31 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             std::get<std::deque<std::string>>(kv_store[parsed[1]]).push_back(parsed[i]);
         }
         std::string response = ":" + std::to_string(std::get<std::deque<std::string>>(kv_store[parsed[1]]).size()) + "\r\n";
+        send(client_fd, response.c_str(), response.length(), 0);
+    }
+    else if (parsed[0] == "LRANGE")
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        if (!kv_store.count(parsed[1]) || (kv_store.count(parsed[1]) && !std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]])))
+        {
+            send(client_fd, "*0\r\n", 4, 0);
+            return;
+        }
+        int L = std::stoi(parsed[2]);
+        int R = std::stoi(parsed[3]);
+        std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
+        int n = dq.size();
+        if (L < 0 || L >= n || R < 0 || R >= n || L > R)
+        {
+            send(client_fd, "*0\r\n", 4, 0);
+            return;
+        }
+
+        std::string response = "*" + std::to_string(R - L + 1) + "\r\n";
+        for (int i = L; i <= R; i++)
+        {
+            response += build_bulk_string(dq[i]);
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     }
 }
