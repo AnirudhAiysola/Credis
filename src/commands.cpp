@@ -108,7 +108,17 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
         int n = dq.size();
         if (L < 0)
+            L = n + L;
+        if (R < 0)
+            R = n + R;
+        if (L < 0)
             L = 0;
+        if (R < 0)
+        {
+            R = 0;
+        }
+        if (L >= n)
+            L = n - 1;
         if (R >= n)
             R = n - 1;
         if (L > R)
