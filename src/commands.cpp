@@ -56,7 +56,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         }
         else
         {
-            if (kv_store_expiry.count(parsed[1]) && kv_store_expiry[parsed[1]] < now)
+            if (kv_store_expiry.count(parsed[1]) && kv_store_expiry[parsed[1]] <= now)
             {
                 kv_store.erase(parsed[1]);
                 kv_store_expiry.erase(parsed[1]);
