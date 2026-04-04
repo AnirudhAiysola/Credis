@@ -91,8 +91,8 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         for (int i = 2; i < parsed.size(); i++)
         {
             std::get<std::deque<std::string>>(kv_store[parsed[1]]).push_back(parsed[i]);
+            std::string response = ":" + std::to_string(std::get<std::deque<std::string>>(kv_store[parsed[1]]).size()) + "\r\n";
+            send(client_fd, response.c_str(), response.length(), 0);
         }
-        std::string response = ":" + std::to_string(std::get<std::deque<std::string>>(kv_store[parsed[1]]).size()) + "\r\n";
-        send(client_fd, response.c_str(), response.length(), 0);
-    }
+        }
 }
