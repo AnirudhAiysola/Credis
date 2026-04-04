@@ -107,7 +107,11 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         int R = std::stoi(parsed[3]);
         std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
         int n = dq.size();
-        if (L < 0 || L >= n || R < 0 || R >= n || L > R)
+        if (L < 0)
+            L = 0;
+        if (R >= n)
+            R = n - 1;
+        if (L > R)
         {
             send(client_fd, "*0\r\n", 4, 0);
             return;
