@@ -33,7 +33,7 @@ void handle_client(int client_fd)
         std::string input(buffer);
         std::vector<std::string> parsed = parse_resp(input);
         std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper); // Convert command to uppercase for case-insensitive comparison
-        std::transform(parsed[2].begin(), parsed[2].end(), parsed[2].begin(), ::toupper); // Convert expiry to uppercase for case-insensitive comparison
+        std::transform(parsed[3].begin(), parsed[3].end(), parsed[3].begin(), ::toupper); // Convert expiry to uppercase for case-insensitive comparison
         handle_command(client_fd, parsed);
     }
     close(client_fd);
