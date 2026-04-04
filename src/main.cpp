@@ -12,6 +12,10 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+#include <unordered_map>
+#include <mutex>
+
+std::mutex kv_store_mutex;
 
 bool isDataType(char &c)
 {
@@ -64,6 +68,7 @@ std::string build_bulk_string(std::string &str)
  * @param client_fd
  */
 
+std::unordered_map<std::string, std::string> kv_store;
 void handle_client(int client_fd)
 {
   std::cout << "Client connected, fd: " << client_fd << "\n";
@@ -82,6 +87,25 @@ void handle_client(int client_fd)
     {
       std::string response = build_bulk_string(parsed[1]);
       send(client_fd, response.c_str(), response.length(), 0);
+    }
+    else if (parsed[0] == "SET")
+    {
+      std::lock_guard<std::mutex> lock(kv_store_mutex);
+      kv_store[parsed[1]] = parsed[2];
+      send(client_fd, "+OK\r\n", 5, 0);
+    }
+    else if (parsed[0] == "GET")
+    {
+      if (!kv_store.count(parsed[1]))
+      {
+        send(client_fd, "$-1\r\n", 5, 0);
+      }
+      else
+      {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string response = build_bulk_string(kv_store[parsed[1]]);
+        send(client_fd, response.c_str(), response.length(), 0);
+      }
     }
   }
   close(client_fd);
