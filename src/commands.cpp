@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <mutex>
 #include <chrono>
+#include <iostream>
 
 void handle_command(int client_fd, std::vector<std::string> &parsed)
 {
@@ -103,6 +104,9 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             send(client_fd, "*0\r\n", 4, 0);
             return;
         }
+        std::cout << "LRANGE parsed size: " << parsed.size() << "\n";
+        for (auto &s : parsed)
+            std::cout << "[" << s << "]\n";
         int L = std::stoi(parsed[2]);
         int R = std::stoi(parsed[3]);
         std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
