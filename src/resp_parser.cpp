@@ -9,9 +9,9 @@
  * @return std::vector<std::string>
  */
 
-bool isDataType(char &c)
+bool isDataType(char &c, char &next_c)
 {
-    return (c == '+') || (c == '*') || (c == '-') || (c == ':') || (c == '$');
+    return (c == '+') || (c == '*') || (c == '-' && !std::isdigit(next_c)) || (c == ':') || (c == '$');
 }
 
 /**
@@ -28,7 +28,7 @@ std::vector<std::string> parse_resp(const std::string &buffer)
 
     while (std::getline(ss, line, '\n'))
     {
-        if (!line.empty() && isDataType(line[0]))
+        if (!line.empty() && line.size() > 1 && isDataType(line[0], line[1]))
         {
             continue;
         }
