@@ -1,6 +1,5 @@
 #include <iostream>
 #include <cstdlib>
-#include <string>
 #include <cstring>
 #include <unistd.h>
 #include <sys/types.h>
@@ -12,104 +11,9 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
-#include <unordered_map>
-#include <mutex>
-
-std::mutex kv_store_mutex;
-
-bool isDataType(char &c)
-{
-  return (c == '+') || (c == '*') || (c == '-') || (c == ':') || (c == '$');
-}
-
-/**
- * @brief Parses a RESP message
- *
- * @param buffer
- * @return std::vector<std::string>
- */
-std::vector<std::string> parse_resp(const std::string &buffer)
-{
-  std::stringstream ss(buffer);
-  std::string line;
-  std::vector<std::string> result;
-
-  while (std::getline(ss, line, '\n'))
-  {
-    if (!line.empty() && isDataType(line[0]))
-    {
-      continue;
-    }
-    // remove the trailing \r
-    if (!line.empty() && line.back() == '\r')
-      line.pop_back();
-    std::cout << "Parsed line: " << line << "\n";
-    result.push_back(line);
-  }
-  return result;
-}
-
-/**
- * @brief Builds a RESP bulk string response
- *
- * @param str
- * @return std::string
- */
-
-std::string build_bulk_string(std::string &str)
-{
-  int n = str.size();
-  return "$" + std::to_string(n) + "\r\n" + str + "\r\n";
-}
-
-/**
- * @brief Handles a client connection
- *
- * @param client_fd
- */
-
-std::unordered_map<std::string, std::string> kv_store;
-void handle_client(int client_fd)
-{
-  std::cout << "Client connected, fd: " << client_fd << "\n";
-  char buffer[1024];
-  while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
-  {
-    std::string input(buffer);
-    std::vector<std::string> parsed = parse_resp(input);
-    std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper);
-
-    if (parsed[0] == "PING")
-    {
-      send(client_fd, "+PONG\r\n", 7, 0);
-    }
-    else if (parsed[0] == "ECHO")
-    {
-      std::string response = build_bulk_string(parsed[1]);
-      send(client_fd, response.c_str(), response.length(), 0);
-    }
-    else if (parsed[0] == "SET")
-    {
-      std::lock_guard<std::mutex> lock(kv_store_mutex);
-      kv_store[parsed[1]] = parsed[2];
-      send(client_fd, "+OK\r\n", 5, 0);
-    }
-    else if (parsed[0] == "GET")
-    {
-      if (!kv_store.count(parsed[1]))
-      {
-        send(client_fd, "$-1\r\n", 5, 0);
-      }
-      else
-      {
-        std::lock_guard<std::mutex> lock(kv_store_mutex);
-        std::string response = build_bulk_string(kv_store[parsed[1]]);
-        send(client_fd, response.c_str(), response.length(), 0);
-      }
-    }
-  }
-  close(client_fd);
-}
+#include "resp_parser.h"
+#include "store.h"
+#include "server.h"
 
 int main(int argc, char **argv)
 {
