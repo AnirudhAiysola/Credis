@@ -138,4 +138,25 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         }
         send(client_fd, response.c_str(), response.length(), 0);
     }
+    else if (parsed[0] == "LPUSH")
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        if (!kv_store.count(parsed[1]))
+        {
+            kv_store[parsed[1]] = std::deque<std::string>();
+        }
+        std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
+        for (int i = 2; i < parsed.size(); i++)
+        {
+            dq.push_front(parsed[i]);
+        }
+        std::string response = ":" + std::to_string(dq.size()) + "\r\n";
+        send(client_fd, response.c_str(), response.length(), 0);
+    }
 }
