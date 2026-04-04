@@ -159,4 +159,21 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         std::string response = ":" + std::to_string(dq.size()) + "\r\n";
         send(client_fd, response.c_str(), response.length(), 0);
     }
+    else if (parsed[0] == "LLEN")
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        if (!kv_store.count(parsed[1]))
+        {
+            send(client_fd, ":0\r\n", 4, 0);
+            return;
+        }
+        if ((kv_store.count(parsed[1]) && !std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]])))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
+        std::string response = ":" + std::to_string(dq.size()) + "\r\n";
+        send(client_fd, response.c_str(), response.length(), 0);
+    }
 }
