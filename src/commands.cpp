@@ -176,4 +176,28 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         std::string response = ":" + std::to_string(dq.size()) + "\r\n";
         send(client_fd, response.c_str(), response.length(), 0);
     }
+    else if (parsed[0] == "LPOP")
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        if (!kv_store.count(parsed[1]))
+        {
+            send(client_fd, "$-1\r\n", 5, 0);
+            return;
+        }
+        if ((kv_store.count(parsed[1]) && !std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]])))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
+        if (dq.empty())
+        {
+            send(client_fd, "$-1\r\n", 5, 0);
+            return;
+        }
+        std::string value = dq.front();
+        dq.pop_front();
+        std::string response = build_bulk_string(value);
+        send(client_fd, response.c_str(), response.length(), 0);
+    }
 }
