@@ -213,3 +213,5 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         send(client_fd, response.c_str(), response.length(), 0);
     }
 }
+
+// cmake --build build && ./build/redis

@@ -31,7 +31,21 @@ void handle_client(int client_fd)
     while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
     {
         std::string input(buffer);
+        std::cout << "RAW: [";
+        for (char c : input)
+        {
+            if (c == '\r')
+                std::cout << "\\r";
+            else if (c == '\n')
+                std::cout << "\\n";
+            else
+                std::cout << c;
+        }
+        std::cout << "]\n";
         std::vector<std::string> parsed = parse_resp(input);
+        std::cout << "PARSED COUNT: " << parsed.size() << "\n";
+        for (auto &s : parsed)
+            std::cout << "PARSED: [" << s << "]\n";
         std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper); // Convert command to uppercase for case-insensitive comparison
         if (parsed[0] == "SET" && parsed.size() > 3)
         {
