@@ -45,7 +45,7 @@ void handle_client(int client_fd)
                 std::cout << c;
         }
         std::cout << "]\n";
-        memset(buffer, 0, sizeof(buffer));
+
         // keep parsing complete messages from accumulated buffer
         while (true)
         {
