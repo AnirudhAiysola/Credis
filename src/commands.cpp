@@ -312,7 +312,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         else if (std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>>>(kv_store[parsed[1]]))
         {
-            send(client_fd, "+stream\r\n", 8, 0);
+            send(client_fd, "+stream\r\n", 9, 0);
             return;
         }
     };
