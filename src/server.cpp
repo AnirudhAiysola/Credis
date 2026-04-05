@@ -27,7 +27,7 @@ std::string build_bulk_string(std::string &str)
 
 void handle_client(int client_fd)
 {
-    char buffer[1024];
+    char buffer[4096];
     while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
     {
         std::string input(buffer);
