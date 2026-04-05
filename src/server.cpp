@@ -34,6 +34,17 @@ void handle_client(int client_fd)
     while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
     {
         accumulated += std::string(buffer, bytes);
+        std::cout << "ACCUMULATED: [";
+        for (char c : accumulated)
+        {
+            if (c == '\r')
+                std::cout << "\\r";
+            else if (c == '\n')
+                std::cout << "\\n";
+            else
+                std::cout << c;
+        }
+        std::cout << "]\n";
 
         // keep parsing complete messages from accumulated buffer
         while (true)
