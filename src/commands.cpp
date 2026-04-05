@@ -196,7 +196,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             return;
         }
         int n = dq.size();
-        int count = parsed.size() > 2 ? std::stoi(parsed[2]) : 1;
+        int count = parsed.size() >= 2 ? std::stoi(parsed[2]) : 1;
         if (count > n)
             count = n;
 
