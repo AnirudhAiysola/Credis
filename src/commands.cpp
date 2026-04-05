@@ -257,7 +257,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         {
             std::condition_variable cv;
             waiting_clients[parsed[1]].push(&cv);
-            int timeout_val = std::stod(parsed[2]);
+            double timeout_val = std::stod(parsed[2]);
 
             if (timeout_val == 0)
             {
