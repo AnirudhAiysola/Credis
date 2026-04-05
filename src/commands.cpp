@@ -257,7 +257,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         {
             std::condition_variable cv;
             waiting_clients[parsed[1]].push(&cv);
-            int timeout_val = std::stoi(parsed[2]);
+            int timeout_val = std::stod(parsed[2]);
 
             if (timeout_val == 0)
             {
@@ -268,7 +268,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             }
             else
             {
-                auto timeout = std::chrono::seconds(timeout_val);
+                auto timeout = std::chrono::duration<double>(timeout_val);
                 bool found = cv.wait_for(lock, timeout, [&]
                                          { return kv_store.count(parsed[1]) &&
                                                   std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]) &&
