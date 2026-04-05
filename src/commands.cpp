@@ -94,6 +94,12 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             std::get<std::deque<std::string>>(kv_store[parsed[1]]).push_back(parsed[i]);
         }
         std::string response = ":" + std::to_string(std::get<std::deque<std::string>>(kv_store[parsed[1]]).size()) + "\r\n";
+        // notify one waiting client if exists
+        if (!waiting_clients[parsed[1]].empty())
+        {
+            waiting_clients[parsed[1]].front()->notify_one();
+            waiting_clients[parsed[1]].pop();
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     }
     else if (parsed[0] == "LRANGE")
@@ -157,6 +163,12 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             dq.push_front(parsed[i]);
         }
         std::string response = ":" + std::to_string(dq.size()) + "\r\n";
+        // notify one waiting client if exists
+        if (!waiting_clients[parsed[1]].empty())
+        {
+            waiting_clients[parsed[1]].front()->notify_one();
+            waiting_clients[parsed[1]].pop();
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     }
     else if (parsed[0] == "LLEN")
@@ -218,6 +230,61 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
                 dq.pop_front();
                 response += build_bulk_string(value);
             }
+            send(client_fd, response.c_str(), response.length(), 0);
+        }
+    }
+    else if (parsed[0] == "BLPOP")
+    {
+        std::unique_lock<std::mutex> lock(kv_store_mutex);
+
+        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        else if (kv_store.count(parsed[1]) && std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]) && !std::get<std::deque<std::string>>(kv_store[parsed[1]]).empty())
+        {
+            std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
+
+            std::string value = dq.front();
+            dq.pop_front();
+            std::string response = "*" + std::to_string(2) + "\r\n" + build_bulk_string(parsed[1]) + build_bulk_string(value);
+            send(client_fd, response.c_str(), response.length(), 0);
+            return;
+        }
+        // wait for an element to be pushed or timeoutelse
+        else
+        {
+            std::condition_variable cv;
+            waiting_clients[parsed[1]].push(&cv);
+            int timeout_val = std::stoi(parsed[2]);
+
+            if (timeout_val == 0)
+            {
+                cv.wait(lock, [&]
+                        { return kv_store.count(parsed[1]) &&
+                                 std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]) &&
+                                 !std::get<std::deque<std::string>>(kv_store[parsed[1]]).empty(); });
+            }
+            else
+            {
+                auto timeout = std::chrono::seconds(timeout_val);
+                bool found = cv.wait_for(lock, timeout, [&]
+                                         { return kv_store.count(parsed[1]) &&
+                                                  std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]) &&
+                                                  !std::get<std::deque<std::string>>(kv_store[parsed[1]]).empty(); });
+                if (!found)
+                {
+                    send(client_fd, "*-1\r\n", 5, 0);
+                    return;
+                }
+            }
+
+            // both paths reach here with element available
+            std::deque<std::string> &dq = std::get<std::deque<std::string>>(kv_store[parsed[1]]);
+            std::string value = dq.front();
+            dq.pop_front();
+            std::string response = "*2\r\n" + build_bulk_string(parsed[1]) + build_bulk_string(value);
             send(client_fd, response.c_str(), response.length(), 0);
         }
     }
