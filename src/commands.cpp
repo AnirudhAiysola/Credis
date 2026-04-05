@@ -195,9 +195,18 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             send(client_fd, "$-1\r\n", 5, 0);
             return;
         }
-        std::string value = dq.front();
-        dq.pop_front();
-        std::string response = build_bulk_string(value);
+        int n = dq.size();
+        int count = parsed.size() > 2 ? std::stoi(parsed[2]) : 1;
+        if (count > n)
+            count = n;
+
+        std::string response = "*" + std::to_string(count) + "\r\n";
+        while (count--)
+        {
+            std::string value = dq.front();
+            dq.pop_front();
+            response += build_bulk_string(value);
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     }
 }
