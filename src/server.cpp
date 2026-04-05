@@ -27,31 +27,60 @@ std::string build_bulk_string(std::string &str)
 
 void handle_client(int client_fd)
 {
-    char buffer[1024];
-    while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
+    char buffer[4096];
+    std::string accumulated;
+
+    int bytes;
+    while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
     {
-        std::string input(buffer);
-        std::cout << "RAW: [";
-        for (char c : input)
+        accumulated += std::string(buffer, bytes);
+
+        // keep parsing complete messages from accumulated buffer
+        while (true)
         {
-            if (c == '\r')
-                std::cout << "\\r";
-            else if (c == '\n')
-                std::cout << "\\n";
-            else
-                std::cout << c;
+            // need at least a * and a number
+            if (accumulated.empty() || accumulated[0] != '*')
+                break;
+
+            // find how many elements
+            size_t first_crlf = accumulated.find("\r\n");
+            if (first_crlf == std::string::npos)
+                break;
+
+            int num_elements = std::stoi(accumulated.substr(1, first_crlf - 1));
+
+            // count \r\n occurrences - need 2*N+1 for a complete message
+            int crlf_count = 0;
+            size_t pos = 0;
+            size_t end = std::string::npos;
+            while ((pos = accumulated.find("\r\n", pos)) != std::string::npos)
+            {
+                crlf_count++;
+                pos += 2;
+                if (crlf_count == 2 * num_elements + 1)
+                {
+                    end = pos;
+                    break;
+                }
+            }
+
+            if (end == std::string::npos)
+                break; // incomplete message
+
+            // extract one complete message
+            std::string message = accumulated.substr(0, end);
+            accumulated = accumulated.substr(end); // keep the rest
+
+            std::vector<std::string> parsed = parse_resp(message);
+            if (parsed.empty())
+                continue;
+
+            std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper);
+            if (parsed[0] == "SET" && parsed.size() > 3)
+                std::transform(parsed[3].begin(), parsed[3].end(), parsed[3].begin(), ::toupper);
+
+            handle_command(client_fd, parsed);
         }
-        std::cout << "]\n";
-        std::vector<std::string> parsed = parse_resp(input);
-        std::cout << "PARSED COUNT: " << parsed.size() << "\n";
-        for (auto &s : parsed)
-            std::cout << "PARSED: [" << s << "]\n";
-        std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper); // Convert command to uppercase for case-insensitive comparison
-        if (parsed[0] == "SET" && parsed.size() > 3)
-        {
-            std::transform(parsed[3].begin(), parsed[3].end(), parsed[3].begin(), ::toupper); // Convert expiry to uppercase for case-insensitive comparison
-        }
-        handle_command(client_fd, parsed);
     }
     close(client_fd);
 }

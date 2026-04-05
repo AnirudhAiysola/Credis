@@ -196,9 +196,7 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
             return;
         }
         int n = dq.size();
-        std::cout << "LPOP parsed size: " << parsed.size() << "\n";
-        for (auto &s : parsed)
-            std::cout << "[" << s << "]\n";
+
         int count = parsed.size() > 2 && !parsed[2].empty() ? std::stoi(parsed[2]) : 1;
         if (count > n)
             count = n;
