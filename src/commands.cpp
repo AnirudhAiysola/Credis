@@ -332,6 +332,28 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         std::map<std::string, std::vector<std::pair<std::string, std::string>>> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>>>(kv_store[parsed[1]]);
 
+        if (parsed[2] == "0-0")
+        {
+            send(client_fd, "-ERR The ID specified in XADD must be greater than 0-0\r\n", 56, 0);
+            return;
+        }
+        if (!stream.empty())
+        {
+            auto lastEntry = stream.rbegin()->first;
+            size_t dash = lastEntry.find('-');
+            long long ms = std::stoll(lastEntry.substr(0, dash));
+            long long seq = std::stoll(lastEntry.substr(dash + 1));
+
+            long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
+            long long new_seq = std::stoll(parsed[2].substr(parsed[2].find('-') + 1));
+
+            if (new_ms < ms || (new_ms == ms && new_seq <= seq))
+            {
+                send(client_fd, "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n", 84, 0);
+                return;
+            }
+        }
+
         std::string entryId = parsed[2];
 
         for (int i = 3; i < parsed.size(); i += 2)
