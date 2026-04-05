@@ -302,7 +302,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         if (std::holds_alternative<std::string>(kv_store[parsed[1]]))
         {
-            send(client_fd, "+string\r\n", 8, 0);
+            send(client_fd, "+string\r\n", 9, 0);
             return;
         }
         else if (std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]))
