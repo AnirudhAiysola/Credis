@@ -27,10 +27,15 @@ std::string build_bulk_string(std::string &str)
 
 void handle_client(int client_fd)
 {
-    char buffer[4096];
+    char buffer[1024];
     while (recv(client_fd, buffer, sizeof(buffer), 0) > 0)
     {
-        std::string input(buffer);
+        int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
+        if (bytes <= 0)
+        {
+            break;
+        }
+        std::string input(buffer, bytes);
         std::vector<std::string> parsed = parse_resp(input);
         std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper); // Convert command to uppercase for case-insensitive comparison
         if (parsed[0] == "SET" && parsed.size() > 3)
