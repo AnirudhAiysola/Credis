@@ -321,6 +321,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
 
+        std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper);
+        std::transform(parsed[1].begin(), parsed[1].end(), parsed[1].begin(), ::toupper);
         if (kv_store.count(parsed[1]) && !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]))
         {
             send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);

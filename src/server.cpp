@@ -86,10 +86,9 @@ void handle_client(int client_fd)
             if (parsed.empty())
                 continue;
 
-            for (int i = 0; i < parsed.size(); i++)
-            {
-                std::transform(parsed[i].begin(), parsed[i].end(), parsed[i].begin(), ::toupper);
-            }
+            std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper);
+            if (parsed[0] == "SET" && parsed.size() > 3)
+                std::transform(parsed[3].begin(), parsed[3].end(), parsed[3].begin(), ::toupper);
 
             handle_command(client_fd, parsed);
         }
