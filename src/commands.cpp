@@ -338,10 +338,9 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             return;
         }
 
-        long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
-
         if (parsed[2].back() != '*')
         {
+            long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
             long long new_seq = std::stoll(parsed[2].substr(parsed[2].find('-') + 1));
             if (!stream.empty())
             {
@@ -359,7 +358,23 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
 
         std::string entryId;
-        if (parsed[2].back() == '*')
+        if (parsed[2] == "*")
+        {
+            long long now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::system_clock::now().time_since_epoch())
+                                .count();
+            long long new_seq = 0;
+            if (!stream.empty())
+            {
+                auto lastEntry = stream.rbegin()->first;
+                long long last_ms = std::stoll(lastEntry.substr(0, lastEntry.find('-')));
+                long long last_seq = std::stoll(lastEntry.substr(lastEntry.find('-') + 1));
+                if (now == last_ms)
+                    new_seq = last_seq + 1;
+            }
+            entryId = std::to_string(now) + "-" + std::to_string(new_seq);
+        }
+        else if (parsed[2].back() == '*')
         {
             // auto generate sequence
             std::string ms_part = parsed[2].substr(0, parsed[2].find('-'));
