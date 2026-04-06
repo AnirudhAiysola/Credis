@@ -15,7 +15,7 @@ bool isDataType(const char &c, const char &next_c)
            (c == '+' && std::isalpha(next_c)) ||
            (c == '-' && std::isalpha(next_c)) ||
            (c == ':') ||
-           (c == '$');
+           (c == '$' && std::isdigit(next_c));
 }
 
 /**
