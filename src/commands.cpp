@@ -426,7 +426,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         if (end.find('-') == std::string::npos)
             end += "-99999999999";
 
-        auto it = stream.lower_bound(start);
+        auto it = start != "-" ? stream.lower_bound(start) : stream.begin();
         auto it_end = stream.upper_bound(end);
         std::string entries;
 
