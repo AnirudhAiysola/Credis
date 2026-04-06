@@ -12,14 +12,13 @@ struct StreamComparator
 {
     bool operator()(const std::string &a, const std::string &b) const
     {
-        long long num1 = std::stoll(a.substr(0, a.find('-')));
-        long long num2 = std::stoll(b.substr(9, b.find('-')));
-        if (num1 != num2)
-            return num1 < num2;
-        long long seq1 = std::stoll(a.substr(a.find('-') + 1));
-        long long seq2 = std::stoll(b.substr(b.find('-') + 1));
-
-        return seq1 < seq2;
+        long long ms_a = std::stoll(a.substr(0, a.find('-')));
+        long long ms_b = std::stoll(b.substr(0, b.find('-')));
+        if (ms_a != ms_b)
+            return ms_a < ms_b;
+        long long seq_a = std::stoll(a.substr(a.find('-') + 1));
+        long long seq_b = std::stoll(b.substr(b.find('-') + 1));
+        return seq_a < seq_b;
     }
 };
 
