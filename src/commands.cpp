@@ -421,9 +421,9 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string,
                                                                                                                               std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]);
 
-        if (start.find('-') == std::string::npos)
+        if (start != "-" && start.find('-') == std::string::npos)
             start += "-0";
-        if (end.find('-') == std::string::npos)
+        if (end != "+" && end.find('-') == std::string::npos)
             end += "-99999999999";
 
         auto it = start != "-" ? stream.lower_bound(start) : stream.begin();
