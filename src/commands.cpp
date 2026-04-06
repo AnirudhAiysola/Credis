@@ -427,7 +427,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             end += "-99999999999";
 
         auto it = start != "-" ? stream.lower_bound(start) : stream.begin();
-        auto it_end = stream.upper_bound(end);
+        auto it_end = end == "+" ? stream.end() : stream.upper_bound(end);
         std::string entries;
 
         int count = 0;
