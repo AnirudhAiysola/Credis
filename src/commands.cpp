@@ -337,24 +337,50 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             send(client_fd, "-ERR The ID specified in XADD must be greater than 0-0\r\n", 56, 0);
             return;
         }
-        if (!stream.empty())
+
+        long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
+
+        if (parsed[2].back() != '*')
         {
-            auto lastEntry = stream.rbegin()->first;
-            size_t dash = lastEntry.find('-');
-            long long ms = std::stoll(lastEntry.substr(0, dash));
-            long long seq = std::stoll(lastEntry.substr(dash + 1));
-
-            long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
             long long new_seq = std::stoll(parsed[2].substr(parsed[2].find('-') + 1));
-
-            if (new_ms < ms || (new_ms == ms && new_seq <= seq))
+            if (!stream.empty())
             {
-                send(client_fd, "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n", 83, 0);
-                return;
+                auto lastEntry = stream.rbegin()->first;
+                size_t dash = lastEntry.find('-');
+                long long ms = std::stoll(lastEntry.substr(0, dash));
+                long long seq = std::stoll(lastEntry.substr(dash + 1));
+
+                if (new_ms < ms || (new_ms == ms && new_seq <= seq))
+                {
+                    send(client_fd, "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n", 83, 0);
+                    return;
+                }
             }
         }
 
-        std::string entryId = parsed[2];
+        std::string entryId;
+        if (parsed[2].back() == '*')
+        {
+            // auto generate sequence
+            std::string ms_part = parsed[2].substr(0, parsed[2].find('-'));
+            long long new_ms = std::stoll(ms_part);
+            long long new_seq = (new_ms == 0) ? 1 : 0;
+
+            if (!stream.empty())
+            {
+                auto lastEntry = stream.rbegin()->first;
+                size_t dash = lastEntry.find('-');
+                long long last_ms = std::stoll(lastEntry.substr(0, dash));
+                long long last_seq = std::stoll(lastEntry.substr(dash + 1));
+                if (new_ms == last_ms)
+                    new_seq = last_seq + 1;
+            }
+            entryId = ms_part + "-" + std::to_string(new_seq);
+        }
+        else
+        {
+            entryId = parsed[2];
+        }
 
         for (int i = 3; i < parsed.size(); i += 2)
         {
