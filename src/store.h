@@ -10,7 +10,7 @@
 
 struct StreamComparator
 {
-    bool operator()(std::string &a, std::string &b) const
+    bool operator()(const std::string &a, const std::string &b) const
     {
         long long num1 = std::stoll(a.substr(0, a.find('-')));
         long long num2 = std::stoll(b.substr(9, b.find('-')));
