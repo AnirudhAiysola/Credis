@@ -95,3 +95,49 @@ void handle_client(int client_fd)
     }
     close(client_fd);
 }
+
+std::string build_array_response(std::vector<std::string> &keys, std::vector<std::string> &ids)
+{
+    std::string outer = "*" + std::to_string(keys.size()) + "\r\n";
+    int p = 0; // for two pointer
+    while (p < keys.size())
+    {
+        std::string key = keys[p];
+        std::string id = ids[p];
+
+        std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[key]);
+
+        auto it = stream.upper_bound(id);
+
+        // Build entries first
+        std::string entries = "";
+        int entry_count = 0;
+
+        while (it != stream.end())
+        {
+            std::string entry = "*2\r\n";
+            entry += build_bulk_string(it->first);
+
+            std::string fields = "*" + std::to_string(it->second.size() * 2) + "\r\n";
+            for (auto &kv : it->second)
+            {
+                fields += build_bulk_string(kv.first);
+                fields += build_bulk_string(kv.second);
+            }
+            entry += fields;
+            entries += entry;
+            entry_count++;
+            it++;
+        }
+
+        // Wrap: [key, array-of-entries]
+        std::string stream_block = "*2\r\n";
+        stream_block += build_bulk_string(key);
+        stream_block += "*" + std::to_string(entry_count) + "\r\n";
+        stream_block += entries;
+
+        outer += stream_block;
+        p++;
+    }
+    return outer;
+}

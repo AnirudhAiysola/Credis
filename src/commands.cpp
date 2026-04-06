@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "store.h"
+#include "server.h"
 #include "resp_parser.h"
 #include <sys/socket.h>
 #include <mutex>
@@ -403,6 +404,12 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
 
         std::string response = build_bulk_string(entryId);
+        // notify blocked clients
+        while (!blocking_clients[parsed[1]].empty())
+        {
+            blocking_clients[parsed[1]].front()->notify_one();
+            blocking_clients[parsed[1]].pop();
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
     m["XRANGE"] = [](int client_fd, std::vector<std::string> &parsed)
@@ -453,13 +460,13 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["XREAD"] = [](int client_fd, std::vector<std::string> &parsed)
     {
-        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::unique_lock<std::mutex> lock(kv_store_mutex);
 
         std::vector<std::string> keys, ids;
 
-        int len = (parsed.size() - 2) / 2;
-        int i = 2;
+        int i = parsed[1] == "STREAMS" ? 2 : 4;
 
+        int len = (parsed.size() - i) / 2;
         while (len--)
         {
             keys.push_back(parsed[i]);
@@ -473,57 +480,50 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         for (int i = 0; i < keys.size(); i++)
         {
-            if (!kv_store.count(keys[i]) || (kv_store.count(keys[i]) &&
-                                             !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]])))
+            if (!kv_store.count(keys[i]) || ((kv_store.count(keys[i]) &&
+                                              !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]))) &&
+                                                parsed[1] == "STREAMS")
             {
                 send(client_fd, "*0\r\n", 4, 0);
                 return;
             }
         }
 
-        std::string outer = "*" + std::to_string(keys.size()) + "\r\n";
-
-        i = 0; // for two pointer
-        while (i < keys.size())
+        if (parsed[1] == "BLOCK")
         {
-            std::string key = keys[i];
-            std::string id = ids[i];
-
-            std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[key]);
-
-            auto it = stream.upper_bound(id);
-
-            // Build entries first
-            std::string entries = "";
-            int entry_count = 0;
-
-            while (it != stream.end())
+            std::vector<std::condition_variable> cv(keys.size());
+            for (int i = 0; i < keys.size(); i++)
             {
-                std::string entry = "*2\r\n";
-                entry += build_bulk_string(it->first);
 
-                std::string fields = "*" + std::to_string(it->second.size() * 2) + "\r\n";
-                for (auto &kv : it->second)
+                blocking_clients[keys[i]].push(&cv[i]);
+                long long timeout_val = std::stoll(parsed[2]);
+
+                bool found = cv[i].wait_for(lock, std::chrono::milliseconds(timeout_val), [&]
+                                            {
+                    if(!kv_store.count(keys[i]) || kv_store.count(keys[i]) && !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]])) {
+                        return false;
+                    }
+                    std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]);
+                    auto it = stream.upper_bound(ids[i]);
+                    return it != stream.end(); });
+                if (!found)
                 {
-                    fields += build_bulk_string(kv.first);
-                    fields += build_bulk_string(kv.second);
+                    send(client_fd, "*-1\r\n", 5, 0);
                 }
-                entry += fields;
-                entries += entry;
-                entry_count++;
-                it++;
+                else
+                {
+                    std::vector<std::string> single_key_vec{keys[i]};
+                    std::vector<std::string> single_id_vec{ids[i]};
+                    std::string response = build_array_response(single_key_vec, single_id_vec);
+                    send(client_fd, response.c_str(), response.size(), 0);
+                }
             }
-
-            // Wrap: [key, array-of-entries]
-            std::string stream_block = "*2\r\n";
-            stream_block += build_bulk_string(key);
-            stream_block += "*" + std::to_string(entry_count) + "\r\n";
-            stream_block += entries;
-
-            outer += stream_block;
-            i++;
         }
-        send(client_fd, outer.c_str(), outer.size(), 0);
+        else
+        {
+            std::string response = build_array_response(keys, ids);
+            send(client_fd, response.c_str(), response.size(), 0);
+        }
     };
 
     return m;
