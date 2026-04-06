@@ -320,7 +320,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
 
-        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>>>(kv_store[parsed[1]]))
+        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]))
         {
             send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
             return;
@@ -330,8 +330,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         {
             kv_store[parsed[1]] = std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>();
         }
-        std::map<std::string, std::vector<std::pair<std::string, std::string>>> &stream = std::get<std::map<std::string,
-                                                                                                            std::vector<std::pair<std::string, std::string>>>>(kv_store[parsed[1]]);
+        std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]);
 
         if (parsed[2] == "0-0")
         {
