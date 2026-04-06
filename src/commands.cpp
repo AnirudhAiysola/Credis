@@ -483,7 +483,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         for (int i = 0; i < keys.size(); i++)
         {
-            std::cout << "Checking key: " << keys[i] << " - Count: " << kv_store.count(keys[i]) << "\n";
+
             if (!kv_store.count(keys[i]) || ((kv_store.count(keys[i]) &&
                                               !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]))) &&
                                                 parsed[1] == "STREAMS")
@@ -493,7 +493,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             }
         }
 
-        if (parsed[1] == "BLOCK" || parsed[1] == "block")
+        if (parsed[1] == "BLOCK")
         {
             std::vector<std::condition_variable> cv(keys.size());
             for (int i = 0; i < keys.size(); i++)
@@ -502,24 +502,43 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
                 blocking_clients[keys[i]].push(&cv[i]);
                 long long timeout_val = std::stoll(parsed[2]);
 
-                bool found = cv[i].wait_for(lock, std::chrono::milliseconds(timeout_val), [&]
-                                            {
+                if (timeout_val == 0)
+                {
+                    cv[i].wait(lock, [&]
+                               {
+                        if(!kv_store.count(keys[i]) || kv_store.count(keys[i]) && !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]])) {
+                            return false;
+                        }
+                        std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]);
+                        auto it = stream.upper_bound(ids[i]);
+                        return it != stream.end(); });
+
+                    std::vector<std::string> single_key_vec{keys[i]};
+                    std::vector<std::string> single_id_vec{ids[i]};
+                    std::string response = build_array_response(single_key_vec, single_id_vec);
+                    send(client_fd, response.c_str(), response.size(), 0);
+                }
+                else
+                {
+                    bool found = cv[i].wait_for(lock, std::chrono::milliseconds(timeout_val), [&]
+                                                {
                     if(!kv_store.count(keys[i]) || kv_store.count(keys[i]) && !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]])) {
                         return false;
                     }
                     std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]);
                     auto it = stream.upper_bound(ids[i]);
                     return it != stream.end(); });
-                if (!found)
-                {
-                    send(client_fd, "*-1\r\n", 5, 0);
-                }
-                else
-                {
-                    std::vector<std::string> single_key_vec{keys[i]};
-                    std::vector<std::string> single_id_vec{ids[i]};
-                    std::string response = build_array_response(single_key_vec, single_id_vec);
-                    send(client_fd, response.c_str(), response.size(), 0);
+                    if (!found)
+                    {
+                        send(client_fd, "*-1\r\n", 5, 0);
+                    }
+                    else
+                    {
+                        std::vector<std::string> single_key_vec{keys[i]};
+                        std::vector<std::string> single_id_vec{ids[i]};
+                        std::string response = build_array_response(single_key_vec, single_id_vec);
+                        send(client_fd, response.c_str(), response.size(), 0);
+                    }
                 }
             }
         }
