@@ -482,6 +482,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         for (int i = 0; i < keys.size(); i++)
         {
+            std::cout << "Checking key: " << keys[i] << " - Count: " << kv_store.count(keys[i]) << "\n";
             if (!kv_store.count(keys[i]) || ((kv_store.count(keys[i]) &&
                                               !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]))) &&
                                                 parsed[1] == "STREAMS")
