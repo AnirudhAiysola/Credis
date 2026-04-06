@@ -9,9 +9,13 @@
  * @return std::vector<std::string>
  */
 
-bool isDataType(char &c, char &next_c)
+bool isDataType(const char &c, const char &next_c)
 {
-    return (c == '+' && std::isalpha(next_c)) || (c == '*' && std::isdigit(next_c)) || (c == '-' && std::isalpha(next_c)) || (c == ':') || (c == '$');
+    return (c == '*' && std::isdigit(next_c)) ||
+           (c == '+' && std::isalpha(next_c)) ||
+           (c == '-' && std::isalpha(next_c)) ||
+           (c == ':') ||
+           (c == '$');
 }
 
 /**
