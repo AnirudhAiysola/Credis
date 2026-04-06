@@ -489,7 +489,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             }
         }
 
-        if (parsed[1] == "BLOCK")
+        if (parsed[1] == "BLOCK" || parsed[1] == "block")
         {
             std::vector<std::condition_variable> cv(keys.size());
             for (int i = 0; i < keys.size(); i++)
