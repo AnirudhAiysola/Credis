@@ -343,6 +343,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         if (parsed[2].back() != '*')
         {
+            std::cout << "Parsed [2]:" << parsed[2] << std::endl;
             long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
             long long new_seq = std::stoll(parsed[2].substr(parsed[2].find('-') + 1));
             if (!stream.empty())
@@ -512,7 +513,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
                     ids[i] = "";
                 }
                 blocking_clients[keys[i]].push(&cv[i]);
-                std::cout << "Parsed [2]:" << parsed[2] << std::endl;
+
                 long long timeout_val = std::stoll(parsed[2]);
 
                 if (timeout_val == 0)
