@@ -13,7 +13,7 @@
  * @return std::string
  */
 
-std::string build_bulk_string(std::string &str)
+std::string build_bulk_string(const std::string &str)
 {
     int n = str.size();
     return "$" + std::to_string(n) + "\r\n" + str + "\r\n";

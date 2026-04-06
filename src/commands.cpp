@@ -328,9 +328,10 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         if (!kv_store.count(parsed[1]))
         {
-            kv_store[parsed[1]] = std::map<std::string, std::vector<std::pair<std::string, std::string>>>();
+            kv_store[parsed[1]] = std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>();
         }
-        std::map<std::string, std::vector<std::pair<std::string, std::string>>> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>>>(kv_store[parsed[1]]);
+        std::map<std::string, std::vector<std::pair<std::string, std::string>>> &stream = std::get<std::map<std::string,
+                                                                                                            std::vector<std::pair<std::string, std::string>>>>(kv_store[parsed[1]]);
 
         if (parsed[2] == "0-0")
         {
@@ -404,6 +405,52 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         std::string response = build_bulk_string(entryId);
         send(client_fd, response.c_str(), response.length(), 0);
+    };
+    m["XRANGE"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        if (!kv_store.count(parsed[1]) || (kv_store.count(parsed[1]) &&
+                                           !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]])))
+        {
+            send(client_fd, "*0\r\n", 4, 0);
+            return;
+        }
+        std::string start = parsed[2];
+        std::string end = parsed[3];
+
+        std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string,
+                                                                                                                              std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]);
+
+        if (start.find('-') == std::string::npos)
+            start += "-0";
+        if (end.find('-') == std::string::npos)
+            end += "-99999999999";
+
+        auto it = stream.lower_bound(start);
+        auto it_end = stream.upper_bound(end);
+        std::string entries;
+
+        int count = 0;
+        while (it != it_end)
+        {
+            std::string entry = "*2\r\n";
+            entry += build_bulk_string(it->first);
+
+            // field value array
+            std::string fields = "*" + std::to_string(it->second.size() * 2) + "\r\n";
+            for (auto &kv : it->second)
+            {
+                fields += build_bulk_string(kv.first);
+                fields += build_bulk_string(kv.second);
+            }
+            entry += fields;
+            entries += entry;
+            count++;
+            it++;
+        }
+        std::string response = "*" + std::to_string(count) + "\r\n" + entries;
+        send(client_fd, response.c_str(), response.size(), 0);
     };
 
     return m;
