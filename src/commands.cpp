@@ -343,7 +343,6 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         if (parsed[2].back() != '*')
         {
-            std::cout << "Parsed [2]:" << parsed[2] << std::endl;
             long long new_ms = std::stoll(parsed[2].substr(0, parsed[2].find('-')));
             long long new_seq = std::stoll(parsed[2].substr(parsed[2].find('-') + 1));
             if (!stream.empty())
@@ -371,9 +370,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             if (!stream.empty())
             {
                 auto lastEntry = stream.rbegin()->first;
-                std::cout << "stoll1 " << lastEntry.substr(0, lastEntry.find('-')) << std::endl;
                 long long last_ms = std::stoll(lastEntry.substr(0, lastEntry.find('-')));
-                std::cout << "stoll2 " << lastEntry.substr(lastEntry.find('-') + 1) << std::endl;
                 long long last_seq = std::stoll(lastEntry.substr(lastEntry.find('-') + 1));
                 if (now == last_ms)
                     new_seq = last_seq + 1;
@@ -392,9 +389,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             {
                 auto lastEntry = stream.rbegin()->first;
                 size_t dash = lastEntry.find('-');
-                std::cout << "stoll3" << lastEntry.substr(0, dash) << std::endl;
                 long long last_ms = std::stoll(lastEntry.substr(0, dash));
-                std::cout << "stoll4" << lastEntry.substr(dash + 1) << std::endl;
                 long long last_seq = std::stoll(lastEntry.substr(dash + 1));
                 if (new_ms == last_ms)
                     new_seq = last_seq + 1;
@@ -513,10 +508,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
                         ids[i] = stream.empty() ? "" : stream.rbegin()->first;
                     }
                 }
-                else
-                {
-                    ids[i] = "";
-                }
+
                 blocking_clients[keys[i]].push(&cv[i]);
 
                 long long timeout_val = std::stoll(parsed[2]);
