@@ -498,7 +498,19 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             std::vector<std::condition_variable> cv(keys.size());
             for (int i = 0; i < keys.size(); i++)
             {
-
+                if (ids[i] == "$")
+                {
+                    if (kv_store.count(keys[i]) &&
+                        std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]))
+                    {
+                        auto &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]]);
+                        ids[i] = stream.empty() ? "" : stream.rbegin()->first;
+                    }
+                }
+                else
+                {
+                    ids[i] = "";
+                }
                 blocking_clients[keys[i]].push(&cv[i]);
                 long long timeout_val = std::stoll(parsed[2]);
 
