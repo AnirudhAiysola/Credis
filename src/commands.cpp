@@ -451,6 +451,80 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::string response = "*" + std::to_string(count) + "\r\n" + entries;
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["XREAD"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        std::vector<std::string> keys, ids;
+
+        int len = (parsed.size() - 2) / 2;
+        int i = 2;
+
+        while (len--)
+        {
+            keys.push_back(parsed[i]);
+            i++;
+        }
+        while (i < parsed.size())
+        {
+            ids.push_back(parsed[i]);
+            i++;
+        }
+
+        for (int i = 0; i < keys.size(); i++)
+        {
+            if (!kv_store.count(keys[i]) || (kv_store.count(keys[i]) &&
+                                             !std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[keys[i]])))
+            {
+                send(client_fd, "*0\r\n", 4, 0);
+                return;
+            }
+        }
+
+        std::string outer = "*" + std::to_string(keys.size()) + "\r\n";
+
+        i = 0; // for two pointer
+        while (i < keys.size())
+        {
+            std::string key = keys[i];
+            std::string id = ids[i];
+
+            std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator> &stream = std::get<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[key]);
+
+            auto it = stream.upper_bound(id);
+
+            // Build entries first
+            std::string entries = "";
+            int entry_count = 0;
+
+            while (it != stream.end())
+            {
+                std::string entry = "*2\r\n";
+                entry += build_bulk_string(it->first);
+
+                std::string fields = "*" + std::to_string(it->second.size() * 2) + "\r\n";
+                for (auto &kv : it->second)
+                {
+                    fields += build_bulk_string(kv.first);
+                    fields += build_bulk_string(kv.second);
+                }
+                entry += fields;
+                entries += entry;
+                entry_count++;
+                it++;
+            }
+
+            // Wrap: [key, array-of-entries]
+            std::string stream_block = "*2\r\n";
+            stream_block += build_bulk_string(key);
+            stream_block += "*" + std::to_string(entry_count) + "\r\n";
+            stream_block += entries;
+
+            outer += stream_block;
+            i++;
+        }
+        send(client_fd, outer.c_str(), outer.size(), 0);
+    };
 
     return m;
 }();
