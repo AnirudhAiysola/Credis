@@ -464,6 +464,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     {
         std::unique_lock<std::mutex> lock(kv_store_mutex);
         std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper);
+        std::transform(parsed[1].begin(), parsed[1].end(), parsed[1].begin(), ::toupper);
         std::vector<std::string> keys, ids;
 
         int i = parsed[1] == "STREAMS" ? 2 : 4;
