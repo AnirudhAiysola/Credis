@@ -334,7 +334,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         if (parsed[2] == "0-0")
         {
-            send(client_fd, "-ERR The ID specified in XADD must be greater than 0-0\r\n", 55, 0);
+            send(client_fd, "-ERR The ID specified in XADD must be greater than 0-0\r\n", 56, 0);
             return;
         }
         if (!stream.empty())
