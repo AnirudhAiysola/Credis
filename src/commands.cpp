@@ -590,6 +590,16 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             return;
         }
     };
+    m["MULTI"] = [&](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        if (parsed[0] == "MULTI")
+        {
+            send(client_fd, "+OK\r\n", 5, 0);
+            return;
+        }
+    };
 
     return m;
 }();
