@@ -624,6 +624,12 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
 void handle_command(int client_fd, std::vector<std::string> &parsed)
 {
+    if (inTransaction[client_fd])
+    {
+        transaction_commands[client_fd].push(parsed);
+        send(client_fd, "+QUEUED\r\n", 9, 0);
+        return;
+    }
     auto it = command_map.find(parsed[0]);
     if (it != command_map.end())
         it->second(client_fd, parsed);
