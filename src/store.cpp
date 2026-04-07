@@ -8,3 +8,5 @@ std::unordered_map<std::string, long long> kv_store_expiry;
 std::condition_variable kv_store_cv;
 std::unordered_map<std::string, std::queue<std::condition_variable *>> waiting_clients;
 std::unordered_map<std::string, std::queue<std::condition_variable *>> blocking_clients;
+std::unordered_map<int, bool> inTransaction;
+std::unordered_map<int, std::queue<std::vector<std::string>>> transaction_commands;

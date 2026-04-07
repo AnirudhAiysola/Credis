@@ -596,7 +596,18 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         if (parsed[0] == "MULTI")
         {
+            inTransaction[client_fd] = true;
             send(client_fd, "+OK\r\n", 5, 0);
+            return;
+        }
+    };
+    m["EXEC"] = [&](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        if (!inTransaction[client_fd])
+        {
+            send(client_fd, "-ERR EXEC without MULTI\r\n", 25, 0);
             return;
         }
     };
