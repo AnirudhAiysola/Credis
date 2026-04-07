@@ -571,7 +571,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         if (kv_store.count(parsed[1]) && !std::holds_alternative<std::string>(kv_store[parsed[1]]))
         {
-            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            send(client_fd, "-ERR value is not an integer or out of range\r\n", 44, 0);
             return;
         }
 
@@ -586,7 +586,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         catch (const std::exception &e)
         {
-            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            send(client_fd, "-ERR value is not an integer or out of range\r\n", 44, 0);
             return;
         }
     };
