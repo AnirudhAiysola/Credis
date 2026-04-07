@@ -569,11 +569,26 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             send(client_fd, ":1\r\n", 4, 0);
             return;
         }
-        long long num = std::stoll(std::get<std::string>(kv_store[parsed[1]]));
-        num++;
-        kv_store[parsed[1]] = std::to_string(num);
-        std::string response = ":" + std::to_string(num) + "\r\n";
-        send(client_fd, response.c_str(), response.length(), 0);
+        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::string>(kv_store[parsed[1]]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+
+        long long num;
+        try
+        {
+            num = std::stoll(std::get<std::string>(kv_store[parsed[1]]));
+            num++;
+            kv_store[parsed[1]] = std::to_string(num);
+            std::string response = ":" + std::to_string(num) + "\r\n";
+            send(client_fd, response.c_str(), response.length(), 0);
+        }
+        catch (const std::exception &e)
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
     };
 
     return m;
