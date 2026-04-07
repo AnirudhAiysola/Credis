@@ -610,6 +610,13 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             send(client_fd, "-ERR EXEC without MULTI\r\n", 25, 0);
             return;
         }
+        if (transaction_commands[client_fd].empty())
+        {
+            send(client_fd, "*0\r\n", 3, 0);
+            inTransaction.erase(client_fd);
+            transaction_commands.erase(client_fd);
+            return;
+        }
     };
 
     return m;
