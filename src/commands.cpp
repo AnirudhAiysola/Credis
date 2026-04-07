@@ -612,7 +612,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         if (transaction_commands[client_fd].empty())
         {
-            send(client_fd, "*0\r\n", 3, 0);
+            send(client_fd, "*0\r\n", 4, 0);
             inTransaction.erase(client_fd);
             transaction_commands.erase(client_fd);
             return;
