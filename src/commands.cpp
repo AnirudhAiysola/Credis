@@ -594,12 +594,9 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
 
-        if (parsed[0] == "MULTI")
-        {
-            inTransaction[client_fd] = true;
-            send(client_fd, "+OK\r\n", 5, 0);
-            return;
-        }
+        inTransaction[client_fd] = true;
+        send(client_fd, "+OK\r\n", 5, 0);
+        return;
     };
     m["EXEC"] = [&](int client_fd, std::vector<std::string> &parsed)
     {
@@ -624,7 +621,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
 void handle_command(int client_fd, std::vector<std::string> &parsed)
 {
-    if (inTransaction[client_fd])
+    if (inTransaction[client_fd] && parsed[0] != "EXEC" && parsed[0] != "DISCARD")
     {
         transaction_commands[client_fd].push(parsed);
         send(client_fd, "+QUEUED\r\n", 9, 0);
