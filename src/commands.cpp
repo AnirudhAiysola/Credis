@@ -741,12 +741,16 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     m["REPLCONF"] = [](int client_fd, std::vector<std::string> &parsed)
     {
         std::transform(parsed[1].begin(), parsed[1].end(), parsed[1].begin(), ::toupper);
+        if (!isReplica && parsed[1] == "ACK" && parsed.size() >= 3)
+        {
+            replica_ack_counts[client_fd] = std::stoll(parsed[2]);
+            return; // no response to send
+        }
         if (isReplica && parsed.size() >= 3 && parsed[1] == "GETACK")
         {
             std::string offset = std::to_string(byte_counter);
             std::string response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" +
                                    std::to_string(offset.size()) + "\r\n" + offset + "\r\n";
-            replica_ack_counts[client_fd] = std::stoll(parsed[2]);
             send(client_fd, response.c_str(), response.size(), 0);
         }
         else
@@ -787,8 +791,6 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             int acked = 0;
             for (int fd : replica_fds)
             {
-                std::cout << "FD SIZE" << replica_fds.size() << std::endl;
-                std::cout << "ACK count for fd " << fd << ": " << (replica_ack_counts.count(fd) ? replica_ack_counts[fd] : 0) << std::endl;
                 if (replica_ack_counts.count(fd) && replica_ack_counts[fd] >= master_byte_counter)
                     acked++;
             }
