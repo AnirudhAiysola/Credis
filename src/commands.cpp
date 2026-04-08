@@ -730,8 +730,17 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["PSYNC"] = [](int client_fd, std::vector<std::string> &parsed)
     {
+        std::string hex = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
+        std::string bytes;
+        for (int i = 0; i < hex.size(); i += 2)
+        {
+            bytes += (char)std::stoi(hex.substr(i, 2), nullptr, 16);
+        }
         std::string response = "+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
+
+        std::string byteResponse = "$" + std::to_string(bytes.size()) + "\r\n" + bytes;
+        send(client_fd, byteResponse.c_str(), byteResponse.size(), 0);
     };
 
     return m;
