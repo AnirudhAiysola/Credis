@@ -13,3 +13,4 @@ std::unordered_map<int, std::queue<std::vector<std::string>>> transaction_comman
 std::unordered_map<int, std::vector<std::string>> transaction_responses;
 bool isReplica = false;
 std::vector<int> replica_fds;
+std::string master = "";
