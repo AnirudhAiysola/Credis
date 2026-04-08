@@ -46,6 +46,7 @@ void handle_client(int client_fd)
         }
         std::cout << "]\n";
 
+        std::cout << "FIRST CHAR: " << accumulated[0] << std::endl;
         // keep parsing complete messages from accumulated buffer
         while (true)
         {
