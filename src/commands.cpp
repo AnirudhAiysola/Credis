@@ -796,6 +796,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             int acked = 0;
             for (int fd : replica_fds)
             {
+                std::cout << "ACK count for fd " << fd << ": " << (replica_ack_counts.count(fd) ? replica_ack_counts[fd] : 0) << std::endl;
                 if (replica_ack_counts.count(fd) && replica_ack_counts[fd] >= master_byte_counter)
                     acked++;
             }
