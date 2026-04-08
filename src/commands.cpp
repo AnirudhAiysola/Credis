@@ -13,12 +13,22 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
     m["PING"] = [](int client_fd, std::vector<std::string> &parsed)
     {
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back("+PONG\r\n");
+            return;
+        }
         send(client_fd, "+PONG\r\n", 7, 0);
     };
 
     m["ECHO"] = [](int client_fd, std::vector<std::string> &parsed)
     {
         std::string response = build_bulk_string(parsed[1]);
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
 
@@ -47,6 +57,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             kv_store_expiry.erase(parsed[1]);
         }
         kv_store[parsed[1]] = std::string(parsed[2]);
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back("+OK\r\n");
+            return;
+        }
         send(client_fd, "+OK\r\n", 5, 0);
     };
 
@@ -72,6 +87,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         std::string value = std::get<std::string>(it->second);
         std::string response = build_bulk_string(value);
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
 
@@ -99,6 +119,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             waiting_clients[parsed[1]].front()->notify_one();
             waiting_clients[parsed[1]].pop();
         }
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
 
@@ -125,6 +150,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         {
             waiting_clients[parsed[1]].front()->notify_one();
             waiting_clients[parsed[1]].pop();
+        }
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
         }
         send(client_fd, response.c_str(), response.length(), 0);
     };
@@ -167,6 +197,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         for (int i = L; i <= R; i++)
             response += build_bulk_string(dq[i]);
 
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
 
@@ -188,55 +223,61 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         std::deque<std::string> &dq = std::get<std::deque<std::string>>(it->second);
         std::string response = ":" + std::to_string(dq.size()) + "\r\n";
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
 
     m["LPOP"] = [](int client_fd, std::vector<std::string> &parsed)
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string response;
 
         auto it = kv_store.find(parsed[1]);
         if (it == kv_store.end())
         {
-            send(client_fd, "$-1\r\n", 5, 0);
-            return;
+            response = "$-1\r\n";
         }
-        if (!std::holds_alternative<std::deque<std::string>>(it->second))
+        else if (!std::holds_alternative<std::deque<std::string>>(it->second))
         {
-            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
-            return;
-        }
-
-        std::deque<std::string> &dq = std::get<std::deque<std::string>>(it->second);
-        if (dq.empty())
-        {
-            send(client_fd, "$-1\r\n", 5, 0);
-            return;
-        }
-
-        if (parsed.size() == 2)
-        {
-            std::string value = dq.front();
-            dq.pop_front();
-            std::string response = build_bulk_string(value);
-            send(client_fd, response.c_str(), response.length(), 0);
+            response = "-ERR Operation against a key holding the wrong kind of value\r\n";
         }
         else
         {
-            int n = dq.size();
-            int count = std::stoi(parsed[2]);
-            if (count > n)
-                count = n;
-
-            std::string response = "*" + std::to_string(count) + "\r\n";
-            while (count--)
+            std::deque<std::string> &dq = std::get<std::deque<std::string>>(it->second);
+            if (dq.empty())
+            {
+                response = "$-1\r\n";
+            }
+            else if (parsed.size() == 2)
             {
                 std::string value = dq.front();
                 dq.pop_front();
-                response += build_bulk_string(value);
+                response = build_bulk_string(value);
             }
-            send(client_fd, response.c_str(), response.length(), 0);
+            else
+            {
+                int n = dq.size();
+                int count = std::stoi(parsed[2]);
+                if (count > n)
+                    count = n;
+                response = "*" + std::to_string(count) + "\r\n";
+                while (count--)
+                {
+                    std::string value = dq.front();
+                    dq.pop_front();
+                    response += build_bulk_string(value);
+                }
+            }
         }
+
+        if (inTransaction[client_fd])
+            transaction_responses[client_fd].push_back(response);
+        else
+            send(client_fd, response.c_str(), response.size(), 0);
     };
 
     m["BLPOP"] = [](int client_fd, std::vector<std::string> &parsed)
@@ -290,31 +331,35 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::string value = dq.front();
         dq.pop_front();
         std::string response = "*2\r\n" + build_bulk_string(parsed[1]) + build_bulk_string(value);
+        // if (inTransaction[client_fd])
+        // {
+        //     transaction_responses[client_fd].push_back(response);
+        //     return;
+        // }
         send(client_fd, response.c_str(), response.length(), 0);
     };
     m["TYPE"] = [](int client_fd, std::vector<std::string> &parsed)
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
 
+        std::string response;
         if (!kv_store.count(parsed[1]))
-        {
-            send(client_fd, "+none\r\n", 7, 0);
-            return;
-        }
-        if (std::holds_alternative<std::string>(kv_store[parsed[1]]))
-        {
-            send(client_fd, "+string\r\n", 9, 0);
-            return;
-        }
+            response = "+none\r\n";
+        else if (std::holds_alternative<std::string>(kv_store[parsed[1]]))
+            response = "+string\r\n";
         else if (std::holds_alternative<std::deque<std::string>>(kv_store[parsed[1]]))
+            response = "+list\r\n";
+        else if (std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]))
+            response = "+stream\r\n";
+
+        if (inTransaction[client_fd])
         {
-            send(client_fd, "+list\r\n", 7, 0);
+            transaction_responses[client_fd].push_back(response);
             return;
         }
-        else if (std::holds_alternative<std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>(kv_store[parsed[1]]))
+        else
         {
-            send(client_fd, "+stream\r\n", 9, 0);
-            return;
+            send(client_fd, response.c_str(), response.length(), 0);
         }
     };
     m["XADD"] = [](int client_fd, std::vector<std::string> &parsed)
@@ -413,6 +458,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             blocking_clients[parsed[1]].front()->notify_one();
             blocking_clients[parsed[1]].pop();
         }
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.length(), 0);
     };
     m["XRANGE"] = [](int client_fd, std::vector<std::string> &parsed)
@@ -459,6 +509,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             it++;
         }
         std::string response = "*" + std::to_string(count) + "\r\n" + entries;
+        if (inTransaction[client_fd])
+        {
+            transaction_responses[client_fd].push_back(response);
+            return;
+        }
         send(client_fd, response.c_str(), response.size(), 0);
     };
     m["XREAD"] = [](int client_fd, std::vector<std::string> &parsed)
@@ -559,48 +614,56 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             send(client_fd, response.c_str(), response.size(), 0);
         }
     };
-    m["INCR"] = [&](int client_fd, std::vector<std::string> &parsed)
+    m["INCR"] = [](int client_fd, std::vector<std::string> &parsed)
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        std::string response;
 
         if (!kv_store.count(parsed[1]))
         {
             kv_store[parsed[1]] = "1";
-            send(client_fd, ":1\r\n", 4, 0);
-            return;
+            response = ":1\r\n";
         }
-        if (kv_store.count(parsed[1]) && !std::holds_alternative<std::string>(kv_store[parsed[1]]))
+        else if (!std::holds_alternative<std::string>(kv_store[parsed[1]]))
         {
-            send(client_fd, "-ERR value is not an integer or out of range\r\n", 46, 0);
-            return;
+            response = "-ERR value is not an integer or out of range\r\n";
+        }
+        else
+        {
+            try
+            {
+                long long num = std::stoll(std::get<std::string>(kv_store[parsed[1]]));
+                num++;
+                kv_store[parsed[1]] = std::to_string(num);
+                response = ":" + std::to_string(num) + "\r\n";
+            }
+            catch (const std::exception &e)
+            {
+                response = "-ERR value is not an integer or out of range\r\n";
+            }
         }
 
-        long long num;
-        try
-        {
-            num = std::stoll(std::get<std::string>(kv_store[parsed[1]]));
-            num++;
-            kv_store[parsed[1]] = std::to_string(num);
-            std::string response = ":" + std::to_string(num) + "\r\n";
+        if (inTransaction[client_fd])
+            transaction_responses[client_fd].push_back(response);
+        else
             send(client_fd, response.c_str(), response.length(), 0);
-        }
-        catch (const std::exception &e)
-        {
-            send(client_fd, "-ERR value is not an integer or out of range\r\n", 46, 0);
-            return;
-        }
     };
-    m["MULTI"] = [&](int client_fd, std::vector<std::string> &parsed)
+    m["MULTI"] = [](int client_fd, std::vector<std::string> &parsed)
     {
         std::lock_guard<std::mutex> lock(kv_store_mutex);
-
+        if (inTransaction[client_fd])
+        {
+            send(client_fd, "-ERR MULTI calls can not be nested\r\n", 35, 0);
+            return;
+        }
         inTransaction[client_fd] = true;
         send(client_fd, "+OK\r\n", 5, 0);
         return;
     };
-    m["EXEC"] = [&](int client_fd, std::vector<std::string> &parsed)
+    m["EXEC"] = [](int client_fd, std::vector<std::string> &parsed)
     {
-        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::unique_lock<std::mutex> lock(kv_store_mutex);
 
         if (!inTransaction[client_fd])
         {
@@ -614,6 +677,23 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             transaction_commands.erase(client_fd);
             return;
         }
+        // command_map[parsed[0]](client_fd, parsed)
+        lock.unlock();
+        while (!transaction_commands[client_fd].empty())
+        {
+            std::vector<std::string> v = transaction_commands[client_fd].front();
+            transaction_commands[client_fd].pop();
+            command_map[v[0]](client_fd, v);
+        }
+        std::string outer = "*" + std::to_string(transaction_responses[client_fd].size()) + "\r\n";
+        for (auto &r : transaction_responses[client_fd])
+            outer += r;
+
+        send(client_fd, outer.c_str(), outer.size(), 0);
+
+        inTransaction.erase(client_fd);
+        transaction_commands.erase(client_fd);
+        transaction_responses.erase(client_fd);
     };
 
     return m;
@@ -621,7 +701,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
 void handle_command(int client_fd, std::vector<std::string> &parsed)
 {
-    if (inTransaction[client_fd] && parsed[0] != "EXEC" && parsed[0] != "DISCARD")
+    if (inTransaction[client_fd] && parsed[0] != "EXEC" && parsed[0] != "DISCARD" && parsed[0] != "MULTI")
     {
         transaction_commands[client_fd].push(parsed);
         send(client_fd, "+QUEUED\r\n", 9, 0);

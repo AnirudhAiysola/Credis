@@ -10,3 +10,4 @@ std::unordered_map<std::string, std::queue<std::condition_variable *>> waiting_c
 std::unordered_map<std::string, std::queue<std::condition_variable *>> blocking_clients;
 std::unordered_map<int, bool> inTransaction;
 std::unordered_map<int, std::queue<std::vector<std::string>>> transaction_commands;
+std::unordered_map<int, std::vector<std::string>> transaction_responses;
