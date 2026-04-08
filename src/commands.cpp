@@ -771,6 +771,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["WAIT"] = [](int client_fd, std::vector<std::string> &parsed)
     {
+        int count = replica_fds.size();
         std::string response = ":" + std::to_string(count) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
