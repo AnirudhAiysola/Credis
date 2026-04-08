@@ -776,6 +776,12 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["WAIT"] = [](int client_fd, std::vector<std::string> &parsed)
     {
+        if (master_byte_counter == 0)
+        {
+            std::string response = ":" + std::to_string(replica_fds.size()) + "\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
         std::cout << "MASTER_BYTE_COUNTER: " << master_byte_counter << std::endl;
         int needed = std::stoi(parsed[1]);
         long long timeout_ms = std::stoll(parsed[2]);
