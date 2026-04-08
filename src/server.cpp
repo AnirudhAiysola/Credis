@@ -164,6 +164,8 @@ void handle_client(int client_fd, std::string initial_data)
         accumulated += std::string(buffer, bytes);
         process();
     }
+    replica_fds.erase(std::remove(replica_fds.begin(), replica_fds.end(), client_fd), replica_fds.end());
+    replica_ack_counts.erase(client_fd);
     close(client_fd);
 }
 
