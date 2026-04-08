@@ -124,7 +124,7 @@ int main(int argc, char **argv)
   int client_fd;
   while ((client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len)) >= 0)
   {
-    std::thread t(handle_client, client_fd);
+    std::thread t(handle_client, client_fd, std::string(""));
     t.detach();
   }
 
