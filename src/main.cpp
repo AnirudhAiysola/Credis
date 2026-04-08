@@ -20,6 +20,8 @@ int main(int argc, char **argv)
   std::cout << std::unitbuf;
   std::cerr << std::unitbuf;
 
+  std::string master = "";
+
   int port = 6379;
   for (int i = 1; i < argc; i++)
   {
@@ -27,10 +29,29 @@ int main(int argc, char **argv)
     {
       port = std::stoi(argv[i + 1]);
     }
-    if (std::string(argv[i]) == "--replicaof")
+    if (std::string(argv[i]) == "--replicaof" && i + 1 < argc)
     {
       isReplica = true;
+      master = argv[i + 1];
     }
+  }
+
+  if (isReplica)
+  {
+    std::string master_host = master.substr(0, master.find(' '));
+    std::string master_port = master.substr(master.find(' ') + 1);
+    int replica_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in master_addr;
+    master_addr.sin_family = AF_INET;
+    master_addr.sin_port = htons(std::stoi(master_port));
+    inet_pton(AF_INET, master_host.c_str(), &master_addr.sin_addr);
+
+    connect(replica_fd, (struct sockaddr *)&master_addr, sizeof(master_addr));
+
+    // Send PING as RESP array
+    std::string ping = "*1\r\n$4\r\nPING\r\n";
+    send(replica_fd, ping.c_str(), ping.size(), 0);
   }
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
