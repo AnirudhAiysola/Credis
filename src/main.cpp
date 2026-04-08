@@ -174,6 +174,10 @@ int main(int argc, char **argv)
       std::string data(buffer, bytes);
 
       std::cout << "PSYNC DATA" << data << std::endl;
+      if (data.find('$') == std::string::npos) {
+    int bytes2 = recv(replica_fd, buffer, sizeof(buffer), 0);
+    data += std::string(buffer, bytes2);
+  }
 
       size_t fullresync_end = data.find("\r\n") + 2;
       size_t dollar = data.find('$', fullresync_end);
