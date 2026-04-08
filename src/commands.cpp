@@ -41,7 +41,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         if (kv_store.count(parsed[1]) && !std::holds_alternative<std::string>(kv_store[parsed[1]]))
         {
-            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            if (!isReplica)
+                send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
             return;
         }
 
@@ -73,7 +74,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             send(replica_fd, command.c_str(), command.length(), 0);
         }
 
-        send(client_fd, "+OK\r\n", 5, 0);
+        if (!isReplica)
+            send(client_fd, "+OK\r\n", 5, 0);
     };
 
     m["GET"] = [](int client_fd, std::vector<std::string> &parsed)

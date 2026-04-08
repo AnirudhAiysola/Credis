@@ -64,6 +64,18 @@ int main(int argc, char **argv)
     std::string sync_command = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
     send(replica_fd, sync_command.c_str(), sync_command.size(), 0);
     recv(replica_fd, buffer, sizeof(buffer), 0);
+
+    std::string data = std::string(buffer);
+    if (data.find("+FULLRESYNC") != std::string::npos)
+    {
+      // master is sending full sync data, we can ignore it for now since we don't have any data to sync
+      std::cout << "Received FULLRESYNC from master, ignoring for now\n";
+    }
+    recv(replica_fd, buffer, sizeof(buffer), 0); // receive the full sync data (which we will ignore for now)
+    memset(buffer, 0, sizeof(buffer));
+
+    std::thread t(handle_client, replica_fd);
+    t.detach();
   }
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
