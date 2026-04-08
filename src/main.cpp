@@ -65,17 +65,21 @@ int main(int argc, char **argv)
     send(replica_fd, sync_command.c_str(), sync_command.size(), 0);
     recv(replica_fd, buffer, sizeof(buffer), 0);
 
-    std::string data = std::string(buffer);
     if (data.find("+FULLRESYNC") != std::string::npos)
     {
       // master is sending full sync data, we can ignore it for now since we don't have any data to sync
       std::cout << "Received FULLRESYNC from master, ignoring for now\n";
     }
     int bytes = recv(replica_fd, buffer, sizeof(buffer), 0); // receive the full sync data (which we will ignore for now)
-    std::cout << "Received " << bytes << " bytes of data from master\n";
-    memset(buffer, 0, sizeof(buffer));
+    std::string data(buffer, bytes);
+    // find end of RDB
+    size_t dollar = data.find('$');
+    size_t crlf = data.find("\r\n", dollar);
+    int rdb_size = std::stoi(data.substr(dollar + 1, crlf - dollar - 1));
+    size_t rdb_end = crlf + 2 + rdb_size;
+    std::string leftover = data.substr(rdb_end);
 
-    std::thread t(handle_client, replica_fd);
+    std::thread t(handle_client, replica_fd, leftover);
     t.detach();
   }
 

@@ -25,10 +25,10 @@ std::string build_bulk_string(const std::string &str)
  * @param client_fd
  */
 
-void handle_client(int client_fd)
+void handle_client(int client_fd, const std::string &initial_data)
 {
     char buffer[4096];
-    std::string accumulated;
+    std::string accumulated = initial_data;
 
     int bytes;
     while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
