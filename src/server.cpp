@@ -82,7 +82,7 @@ void handle_client(int client_fd, std::string initial_data)
 
             // extract one complete message
             std::string message = accumulated.substr(0, end);
-            if (client_fd == master_fd)
+            if (client_fd == master_fd && message.find("GETACK") == std::string::npos)
             {
                 byte_counter += message.size();
                 std::cout << "Received " << message.size() << " bytes from master, total: " << byte_counter << std::endl;
