@@ -33,4 +33,4 @@ extern std::unordered_map<std::string, std::queue<std::condition_variable *>> bl
 extern std::unordered_map<int, bool> inTransaction;
 extern std::unordered_map<int, std::queue<std::vector<std::string>>> transaction_commands;
 extern std::unordered_map<int, std::vector<std::string>> transaction_responses;
-extern bool isReplica = false;
+extern bool isReplica;
