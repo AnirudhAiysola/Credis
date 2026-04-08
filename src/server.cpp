@@ -29,6 +29,7 @@ void handle_client(int client_fd, std::string initial_data)
 {
     char buffer[4096];
     std::string accumulated = initial_data;
+    std::cout << "Initial data: " << initial_data << "\n";
 
     int bytes;
     while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
