@@ -69,6 +69,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         {
             int replica_fd = replica_fds[i];
             std::string command = "*" + std::to_string(parsed.size()) + "\r\n";
+            std::cout << "Propagating to replicas: " << command << " master_byte_counter: " << master_byte_counter << std::endl;
             for (const std::string &arg : parsed)
             {
                 command += build_bulk_string(arg);
