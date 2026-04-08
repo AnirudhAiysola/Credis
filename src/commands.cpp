@@ -769,6 +769,10 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         send(client_fd, byteResponse.c_str(), byteResponse.size(), 0);
         replica_fds.push_back(client_fd);
     };
+    m["WAIT"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        send(client_fd, ":0\r\n", 4, 0);
+    };
 
     return m;
 }();
