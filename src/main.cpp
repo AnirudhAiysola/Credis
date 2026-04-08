@@ -172,6 +172,8 @@ int main(int argc, char **argv)
       int bytes = recv(replica_fd, buffer, sizeof(buffer), 0);
       std::string data(buffer, bytes);
 
+      std::cout << "PSYNC DATA" << data << std::endl;
+
       size_t fullresync_end = data.find("\r\n") + 2;
       size_t dollar = data.find('$', fullresync_end);
       size_t crlf = data.find("\r\n", dollar);
