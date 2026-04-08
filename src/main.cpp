@@ -27,6 +27,10 @@ int main(int argc, char **argv)
     {
       port = std::stoi(argv[i + 1]);
     }
+    if (std::string(argv[i]) == "--replicaof")
+    {
+      isReplica = true;
+    }
   }
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);

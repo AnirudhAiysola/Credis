@@ -713,7 +713,14 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["INFO"] = [](int client_fd, std::vector<std::string> &parsed)
     {
-        send(client_fd, "$11\r\nrole:master\r\n", 18, 0);
+        if (!isReplica)
+        {
+            send(client_fd, "$11\r\nrole:master\r\n", 18, 0);
+        }
+        else
+        {
+            send(client_fd, "$10\r\nrole:slave\r\n", 17, 0);
+        }
     };
 
     return m;
