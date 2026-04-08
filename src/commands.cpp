@@ -18,7 +18,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             transaction_responses[client_fd].push_back("+PONG\r\n");
             return;
         }
-        send(client_fd, "+PONG\r\n", 7, 0);
+        if (!isReplica)
+            send(client_fd, "+PONG\r\n", 7, 0);
     };
 
     m["ECHO"] = [](int client_fd, std::vector<std::string> &parsed)
