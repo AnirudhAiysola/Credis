@@ -724,6 +724,10 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::string response = build_bulk_string(content);
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["REPLCONF"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        send(client_fd, "+OK\r\n", 5, 0);
+    };
 
     return m;
 }();

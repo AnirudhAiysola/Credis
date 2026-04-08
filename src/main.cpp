@@ -49,9 +49,17 @@ int main(int argc, char **argv)
 
     connect(replica_fd, (struct sockaddr *)&master_addr, sizeof(master_addr));
 
-    // Send PING as RESP array
-    std::string ping = "*1\r\n$4\r\nPING\r\n";
-    send(replica_fd, ping.c_str(), ping.size(), 0);
+    char buffer[4096];
+    send(replica_fd, "*1\r\n$4\r\nPING\r\n", 14, 0); // send a PING to master to trigger replication
+    recv(replica_fd, buffer, sizeof(buffer), 0);
+    std::string replconf1 = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$" +
+                            std::to_string(std::to_string(port).size()) + "\r\n" +
+                            std::to_string(port) + "\r\n";
+    send(replica_fd, replconf1.c_str(), replconf1.size(), 0);
+    recv(replica_fd, buffer, sizeof(buffer), 0);
+    std::string replconf2 = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+    send(replica_fd, replconf2.c_str(), replconf2.size(), 0);
+    recv(replica_fd, buffer, sizeof(buffer), 0);
   }
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
