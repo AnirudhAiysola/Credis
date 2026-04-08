@@ -71,7 +71,8 @@ int main(int argc, char **argv)
       // master is sending full sync data, we can ignore it for now since we don't have any data to sync
       std::cout << "Received FULLRESYNC from master, ignoring for now\n";
     }
-    recv(replica_fd, buffer, sizeof(buffer), 0); // receive the full sync data (which we will ignore for now)
+    int bytes = recv(replica_fd, buffer, sizeof(buffer), 0); // receive the full sync data (which we will ignore for now)
+    std::cout << "Received " << bytes << " bytes of data from master\n";
     memset(buffer, 0, sizeof(buffer));
 
     std::thread t(handle_client, replica_fd);
