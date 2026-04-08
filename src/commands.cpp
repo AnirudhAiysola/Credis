@@ -728,6 +728,10 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     {
         send(client_fd, "+OK\r\n", 5, 0);
     };
+    m["PSYNC"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        send(client_fd, "+FULLRESYNC <8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb> 0\r\n", 52, 0);
+    };
 
     return m;
 }();

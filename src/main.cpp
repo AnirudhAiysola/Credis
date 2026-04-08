@@ -60,6 +60,10 @@ int main(int argc, char **argv)
     std::string replconf2 = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
     send(replica_fd, replconf2.c_str(), replconf2.size(), 0);
     recv(replica_fd, buffer, sizeof(buffer), 0);
+
+    std::string sync_command = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+    send(replica_fd, sync_command.c_str(), sync_command.size(), 0);
+    recv(replica_fd, buffer, sizeof(buffer), 0);
   }
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
