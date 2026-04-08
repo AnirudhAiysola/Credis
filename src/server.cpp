@@ -141,9 +141,6 @@ void handle_client(int client_fd, std::string initial_data)
             std::string message = accumulated.substr(0, end);
             accumulated = accumulated.substr(end);
 
-            if (client_fd == master_fd && message.find("GETACK") == std::string::npos)
-                byte_counter += message.size();
-
             std::vector<std::string> parsed = parse_resp(message);
             if (parsed.empty())
                 continue;
@@ -153,6 +150,8 @@ void handle_client(int client_fd, std::string initial_data)
                 std::transform(parsed[3].begin(), parsed[3].end(), parsed[3].begin(), ::toupper);
 
             handle_command(client_fd, parsed);
+            if (client_fd == master_fd)
+                byte_counter += message.size();
         }
     };
 
