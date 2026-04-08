@@ -25,7 +25,7 @@ std::string build_bulk_string(const std::string &str)
  * @param client_fd
  */
 
-void handle_client(int client_fd, std::string &initial_data)
+void handle_client(int client_fd, std::string initial_data)
 {
     char buffer[4096];
     std::string accumulated = initial_data;
