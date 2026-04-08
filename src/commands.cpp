@@ -65,18 +65,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             transaction_responses[client_fd].push_back("+OK\r\n");
             return;
         }
-        for (int i = 0; i < replica_fds.size(); i++)
-        {
-            int replica_fd = replica_fds[i];
-            std::string command = "*" + std::to_string(parsed.size()) + "\r\n";
-            std::cout << "Propagating to replicas: " << command << " master_byte_counter: " << master_byte_counter << std::endl;
-            for (const std::string &arg : parsed)
-            {
-                command += build_bulk_string(arg);
-            }
-            send(replica_fd, command.c_str(), command.length(), 0);
-        }
         std::string command = "*" + std::to_string(parsed.size()) + "\r\n";
+        std::cout << "Propagating to replicas: " << command << " master_byte_counter: " << master_byte_counter << std::endl;
         for (const std::string &arg : parsed)
             command += build_bulk_string(arg);
 
