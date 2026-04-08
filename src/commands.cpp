@@ -739,7 +739,17 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["REPLCONF"] = [](int client_fd, std::vector<std::string> &parsed)
     {
-        send(client_fd, "+OK\r\n", 5, 0);
+        std::transform(parsed[1].begin(), parsed[1].end(), parsed[1].begin(), ::toupper);
+        if (isReplica && parsed.size() >= 3 && parsed[1] == "GETACK")
+        {
+            std::string response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+        }
+        else
+        {
+            std::string response = "+OK\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+        }
     };
     m["PSYNC"] = [](int client_fd, std::vector<std::string> &parsed)
     {
