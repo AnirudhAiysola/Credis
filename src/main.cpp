@@ -99,25 +99,23 @@ int main(int argc, char **argv)
 
     std::string sync_command = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
     send(replica_fd, sync_command.c_str(), sync_command.size(), 0);
-    recv(replica_fd, buffer, sizeof(buffer), 0);
 
     int bytes = recv(replica_fd, buffer, sizeof(buffer), 0);
     std::string data(buffer, bytes);
 
-    std::cout << "DATA" << data << "\n";
-    if (data.find("+FULLRESYNC") != std::string::npos)
-    {
-      std::cout << "Received FULLRESYNC from master, ignoring for now\n";
-    }
+    // data contains: +FULLRESYNC...\r\n$<rdb_size>\r\n<rdb_bytes>[commands...]
+    // skip FULLRESYNC line
+    size_t fullresync_end = data.find("\r\n");
+    fullresync_end += 2; // skip past \r\n
 
-    // find end of RDB
-    size_t dollar = data.find('$');
+    // now find $<rdb_size>
+    size_t dollar = data.find('$', fullresync_end);
     size_t crlf = data.find("\r\n", dollar);
     int rdb_size = std::stoi(data.substr(dollar + 1, crlf - dollar - 1));
     size_t rdb_end = crlf + 2 + rdb_size;
-    std::string leftover = data.substr(rdb_end);
-    // std::cout << "RDB size: " << rdb_size << ", leftover size: " << leftover.size() << "\n";
-    // std::cout << "RDB end" << rdb_end << ", data size: " << data.size() << "\n";
+
+    std::string leftover = rdb_end < data.size() ? data.substr(rdb_end) : "";
+
     std::thread t(handle_client, replica_fd, leftover);
     t.detach();
   }
