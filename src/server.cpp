@@ -25,44 +25,102 @@ std::string build_bulk_string(const std::string &str)
  * @param client_fd
  */
 
+// void handle_client(int client_fd, std::string initial_data)
+// {
+//     char buffer[4096];
+//     std::string accumulated = initial_data;
+//     std::cout << "Initial data: " << initial_data << "\n";
+
+//     int bytes;
+//     while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
+//     {
+//         accumulated += std::string(buffer, bytes);
+//         std::cout << "ACCUMULATED: [";
+//         for (char c : accumulated)
+//         {
+//             if (c == '\r')
+//                 std::cout << "\\r";
+//             else if (c == '\n')
+//                 std::cout << "\\n";
+//             else
+//                 std::cout << c;
+//         }
+//         std::cout << "]\n";
+
+//         std::cout << "FIRST CHAR: " << accumulated[0] << std::endl;
+//         // keep parsing complete messages from accumulated buffer
+//         while (true)
+//         {
+//             // need at least a * and a number
+//             if (accumulated.empty() || accumulated[0] != '*')
+//                 break;
+
+//             // find how many elements
+//             size_t first_crlf = accumulated.find("\r\n");
+//             if (first_crlf == std::string::npos)
+//                 break;
+
+//             int num_elements = std::stoi(accumulated.substr(1, first_crlf - 1));
+
+//             // count \r\n occurrences - need 2*N+1 for a complete message
+//             int crlf_count = 0;
+//             size_t pos = 0;
+//             size_t end = std::string::npos;
+//             while ((pos = accumulated.find("\r\n", pos)) != std::string::npos)
+//             {
+//                 crlf_count++;
+//                 pos += 2;
+//                 if (crlf_count == 2 * num_elements + 1)
+//                 {
+//                     end = pos;
+//                     break;
+//                 }
+//             }
+
+//             if (end == std::string::npos)
+//                 break; // incomplete message
+
+//             // extract one complete message
+//             std::string message = accumulated.substr(0, end);
+//             if (client_fd == master_fd && message.find("GETACK") == std::string::npos)
+//             {
+//                 byte_counter += message.size();
+//                 std::cout << "Received " << message.size() << " bytes from master, total: " << byte_counter << std::endl;
+//             }
+//             accumulated = accumulated.substr(end); // keep the rest
+
+//             std::vector<std::string> parsed = parse_resp(message);
+//             if (parsed.empty())
+//                 continue;
+
+//             std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::toupper);
+//             if (parsed[0] == "SET" && parsed.size() > 3)
+//                 std::transform(parsed[3].begin(), parsed[3].end(), parsed[3].begin(), ::toupper);
+
+//             handle_command(client_fd, parsed);
+//         }
+//     }
+//     close(client_fd);
+// }
+
 void handle_client(int client_fd, std::string initial_data)
 {
     char buffer[4096];
     std::string accumulated = initial_data;
-    std::cout << "Initial data: " << initial_data << "\n";
 
-    int bytes;
-    while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
+    auto process = [&]()
     {
-        accumulated += std::string(buffer, bytes);
-        std::cout << "ACCUMULATED: [";
-        for (char c : accumulated)
-        {
-            if (c == '\r')
-                std::cout << "\\r";
-            else if (c == '\n')
-                std::cout << "\\n";
-            else
-                std::cout << c;
-        }
-        std::cout << "]\n";
-
-        std::cout << "FIRST CHAR: " << accumulated[0] << std::endl;
-        // keep parsing complete messages from accumulated buffer
         while (true)
         {
-            // need at least a * and a number
             if (accumulated.empty() || accumulated[0] != '*')
                 break;
 
-            // find how many elements
             size_t first_crlf = accumulated.find("\r\n");
             if (first_crlf == std::string::npos)
                 break;
 
             int num_elements = std::stoi(accumulated.substr(1, first_crlf - 1));
 
-            // count \r\n occurrences - need 2*N+1 for a complete message
             int crlf_count = 0;
             size_t pos = 0;
             size_t end = std::string::npos;
@@ -78,16 +136,13 @@ void handle_client(int client_fd, std::string initial_data)
             }
 
             if (end == std::string::npos)
-                break; // incomplete message
+                break;
 
-            // extract one complete message
             std::string message = accumulated.substr(0, end);
+            accumulated = accumulated.substr(end);
+
             if (client_fd == master_fd && message.find("GETACK") == std::string::npos)
-            {
                 byte_counter += message.size();
-                std::cout << "Received " << message.size() << " bytes from master, total: " << byte_counter << std::endl;
-            }
-            accumulated = accumulated.substr(end); // keep the rest
 
             std::vector<std::string> parsed = parse_resp(message);
             if (parsed.empty())
@@ -99,6 +154,16 @@ void handle_client(int client_fd, std::string initial_data)
 
             handle_command(client_fd, parsed);
         }
+    };
+
+    // Process any initial data first
+    process();
+
+    int bytes;
+    while ((bytes = recv(client_fd, buffer, sizeof(buffer), 0)) > 0)
+    {
+        accumulated += std::string(buffer, bytes);
+        process();
     }
     close(client_fd);
 }

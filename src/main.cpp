@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 
   if (isReplica)
   {
-    std::thread repl_thread([&]()
+    std::thread repl_thread([=]()
                             {
       std::string master_host = master.substr(0, master.find(' '));
       std::string master_port = master.substr(master.find(' ') + 1);
