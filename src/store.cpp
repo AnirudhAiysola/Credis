@@ -14,3 +14,5 @@ std::unordered_map<int, std::vector<std::string>> transaction_responses;
 bool isReplica = false;
 std::vector<int> replica_fds;
 std::string master = "";
+long long byte_counter = 0;
+int master_fd = -1;

@@ -36,3 +36,5 @@ extern std::unordered_map<int, std::vector<std::string>> transaction_responses;
 extern bool isReplica;
 extern std::vector<int> replica_fds;
 extern std::string master;
+extern long long byte_counter;
+extern int master_fd;

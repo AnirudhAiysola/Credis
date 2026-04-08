@@ -742,7 +742,9 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::transform(parsed[1].begin(), parsed[1].end(), parsed[1].begin(), ::toupper);
         if (isReplica && parsed.size() >= 3 && parsed[1] == "GETACK")
         {
-            std::string response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n";
+            std::string offset = std::to_string(byte_counter);
+            std::string response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" +
+                                   std::to_string(offset.size()) + "\r\n" + offset + "\r\n";
             send(client_fd, response.c_str(), response.size(), 0);
         }
         else

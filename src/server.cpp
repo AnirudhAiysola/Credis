@@ -82,6 +82,11 @@ void handle_client(int client_fd, std::string initial_data)
 
             // extract one complete message
             std::string message = accumulated.substr(0, end);
+            if (client_fd == master_fd)
+            {
+                byte_counter += message.size();
+                std::cout << "Received " << message.size() << " bytes from master, total: " << byte_counter << std::endl;
+            }
             accumulated = accumulated.substr(end); // keep the rest
 
             std::vector<std::string> parsed = parse_resp(message);

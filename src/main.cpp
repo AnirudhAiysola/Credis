@@ -151,6 +151,7 @@ int main(int argc, char **argv)
       inet_pton(AF_INET, master_host.c_str(), &master_addr.sin_addr);
 
       connect(replica_fd, (struct sockaddr *)&master_addr, sizeof(master_addr));
+      master_fd = replica_fd;
 
       char buffer[4096];
       send(replica_fd, "*1\r\n$4\r\nPING\r\n", 14, 0);
