@@ -6,6 +6,7 @@
 #include <mutex>
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 static std::unordered_map<std::string, CommandHandler> command_map = []()
 {
@@ -74,6 +75,14 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             }
             send(replica_fd, command.c_str(), command.length(), 0);
         }
+        std::string command = "*" + std::to_string(parsed.size()) + "\r\n";
+        for (const std::string &arg : parsed)
+            command += build_bulk_string(arg);
+
+        for (int fd : replica_fds)
+            send(fd, command.c_str(), command.size(), 0);
+
+        master_byte_counter += command.size();
 
         if (!isReplica)
             send(client_fd, "+OK\r\n", 5, 0);
@@ -746,6 +755,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             std::string offset = std::to_string(byte_counter);
             std::string response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$" +
                                    std::to_string(offset.size()) + "\r\n" + offset + "\r\n";
+            replica_ack_counts[client_fd] = std::stoll(parsed[2]);
             send(client_fd, response.c_str(), response.size(), 0);
         }
         else
@@ -771,9 +781,38 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["WAIT"] = [](int client_fd, std::vector<std::string> &parsed)
     {
-        int count = replica_fds.size();
-        std::string response = ":" + std::to_string(count) + "\r\n";
-        send(client_fd, response.c_str(), response.size(), 0);
+        int needed = std::stoi(parsed[1]);
+        long long timeout_ms = std::stoll(parsed[2]);
+
+        // send GETACK to all replicas
+        std::string getack = "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
+        for (int fd : replica_fds)
+            send(fd, getack.c_str(), getack.size(), 0);
+
+        auto start = std::chrono::steady_clock::now();
+        while (true)
+        {
+            int acked = 0;
+            for (int fd : replica_fds)
+            {
+                if (replica_ack_counts.count(fd) && replica_ack_counts[fd] >= master_byte_counter)
+                    acked++;
+            }
+            if (acked >= needed)
+            {
+                std::string response = ":" + std::to_string(acked) + "\r\n";
+                send(client_fd, response.c_str(), response.size(), 0);
+                return;
+            }
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() >= timeout_ms)
+            {
+                std::string response = ":" + std::to_string(acked) + "\r\n";
+                send(client_fd, response.c_str(), response.size(), 0);
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
     };
 
     return m;

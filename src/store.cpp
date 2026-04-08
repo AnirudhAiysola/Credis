@@ -16,3 +16,5 @@ std::vector<int> replica_fds;
 std::string master = "";
 long long byte_counter = 0;
 int master_fd = -1;
+std::unordered_map<int, long long> replica_ack_counts;
+long long master_byte_counter = 0;

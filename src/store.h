@@ -38,3 +38,5 @@ extern std::vector<int> replica_fds;
 extern std::string master;
 extern long long byte_counter;
 extern int master_fd;
+extern std::unordered_map<int, long long> replica_ack_counts;
+extern long long master_byte_counter;
