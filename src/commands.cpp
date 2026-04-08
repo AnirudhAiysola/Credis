@@ -695,6 +695,22 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         transaction_commands.erase(client_fd);
         transaction_responses.erase(client_fd);
     };
+    m["DISCARD"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        if (!inTransaction[client_fd])
+        {
+            std::string response = "-ERR DISCARD without MULTI\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        inTransaction.erase(client_fd);
+        if (transaction_commands.count(client_fd))
+            transaction_commands.erase(client_fd);
+        if (transaction_responses.count(client_fd))
+            transaction_responses.erase(client_fd);
+        send(client_fd, "+OK\r\n", 5, 0);
+    };
 
     return m;
 }();
