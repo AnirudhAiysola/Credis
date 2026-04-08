@@ -711,6 +711,10 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             transaction_responses.erase(client_fd);
         send(client_fd, "+OK\r\n", 5, 0);
     };
+    m["INFO"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        send(client_fd, "$11\r\nrole:master\r\n", 18, 0);
+    };
 
     return m;
 }();
