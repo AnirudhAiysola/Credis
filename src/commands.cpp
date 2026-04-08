@@ -771,7 +771,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     };
     m["WAIT"] = [](int client_fd, std::vector<std::string> &parsed)
     {
-        send(client_fd, ":0\r\n", 4, 0);
+        std::string response = ":" + std::to_string(count) + "\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
     };
 
     return m;
