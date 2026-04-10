@@ -109,56 +109,116 @@ int size_of_length_encoded_string(std::ifstream &file)
     }
     else if (type == 3)
     {
-        return -2; // length encoded as a string follows
+        // integer encoded as string, remaining 6 bits = integer type
+        uint8_t int_type = b & 0x3F;
+        if (int_type == 0) // 8-bit integer
+            file.get();
+        else if (int_type == 1) // 16-bit integer
+        {
+            file.get();
+            file.get();
+        }
+        else if (int_type == 2) // 32-bit integer
+        {
+            file.get();
+            file.get();
+            file.get();
+            file.get();
+        }
+        return -2; // signal: was integer encoding, already consumed bytes
     }
-    return -1; // invalid encoding
+    return -1;
+}
+
+// helper to skip a string (read length then skip that many bytes)
+static void skip_string(std::ifstream &file)
+{
+    int len = size_of_length_encoded_string(file);
+    if (len > 0)
+        file.seekg(len, std::ios::cur);
+    // if len == -2 (integer encoding), bytes already consumed above
+}
+
+// helper to read a string into std::string
+static std::string read_string(std::ifstream &file)
+{
+    int len = size_of_length_encoded_string(file);
+    if (len <= 0)
+        return "";
+    std::string s(len, '\0');
+    file.read(&s[0], len);
+    return s;
 }
 
 void load_rdb(const std::string &dir, const std::string &filename)
 {
     std::ifstream rdb_file(dir + "/" + filename, std::ios::binary);
-    // skip header redis magic string and version
+    if (!rdb_file.is_open())
+        return; // file doesn't exist, treat db as empty
+
+    // skip header "REDIS0011" (9 bytes)
     rdb_file.seekg(9);
 
     int byte;
     while ((byte = rdb_file.get()) != EOF)
     {
         uint8_t b = static_cast<uint8_t>(byte);
+
         if (b == 0xFF)
         { // end of file
             break;
         }
         else if (b == 0xFA)
-        { // metadata, skip it
-            while (true)
-            {
-                int len = size_of_length_encoded_string(rdb_file);
-                if (len < 0)
-                    break;                          // error or end of metadata
-                rdb_file.seekg(len, std::ios::cur); // skip the string
-            }
+        {                          // metadata section: always exactly 2 strings (name + value)
+            skip_string(rdb_file); // skip attribute name
+            skip_string(rdb_file); // skip attribute value
         }
         else if (b == 0xFE)
         {                   // database section starts
             rdb_file.get(); // skip db index
         }
         else if (b == 0xFB)
-        {                                            // hash table size info, skip it
-            size_of_length_encoded_string(rdb_file); // skip hash table size
-            size_of_length_encoded_string(rdb_file); // skip number of keys with expiry
+        {                                            // hash table size info, skip both sizes
+            size_of_length_encoded_string(rdb_file); // total keys
+            size_of_length_encoded_string(rdb_file); // keys with expiry
         }
-        else
-        { // it's a key-value pair
-            int type = b;
-            int key_len = size_of_length_encoded_string(rdb_file);
-            std::string key(key_len, '\0');
-            rdb_file.read(&key[0], key_len);
+        else if (b == 0xFC)
+        { // expiry in milliseconds (8 bytes little-endian)
+            uint64_t expiry_ms = 0;
+            for (int i = 0; i < 8; i++)
+                expiry_ms |= (static_cast<uint64_t>(rdb_file.get()) << (8 * i));
 
-            int value_len = size_of_length_encoded_string(rdb_file);
-            std::string value(value_len, '\0');
-            rdb_file.read(&value[0], value_len);
-
-            kv_store[key] = value;
+            rdb_file.get(); // value type (0 = string)
+            std::string key = read_string(rdb_file);
+            std::string value = read_string(rdb_file);
+            if (!key.empty())
+            {
+                kv_store[key] = value;
+                kv_store_expiry[key] = static_cast<long long>(expiry_ms);
+            }
         }
+        else if (b == 0xFD)
+        { // expiry in seconds (4 bytes little-endian)
+            uint32_t expiry_s = 0;
+            for (int i = 0; i < 4; i++)
+                expiry_s |= (static_cast<uint32_t>(rdb_file.get()) << (8 * i));
+
+            rdb_file.get(); // value type (0 = string)
+            std::string key = read_string(rdb_file);
+            std::string value = read_string(rdb_file);
+            if (!key.empty())
+            {
+                kv_store[key] = value;
+                kv_store_expiry[key] = static_cast<long long>(expiry_s) * 1000;
+            }
+        }
+        else if (b == 0x00)
+        { // value type = string, no expiry
+            std::string key = read_string(rdb_file);
+            std::string value = read_string(rdb_file);
+            if (!key.empty())
+                kv_store[key] = value;
+        }
+        // other value types (list, hash, etc.) not needed for this stage
     }
 }
