@@ -15,6 +15,7 @@
 #include "store.h"
 #include "server.h"
 #include "config.h"
+#include "rdb.h"
 
 int main(int argc, char **argv)
 {
@@ -40,6 +41,7 @@ int main(int argc, char **argv)
       config_dbfilename = argv[i + 1];
     }
   }
+  load_rdb(config_dir, config_dbfilename);
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd < 0)

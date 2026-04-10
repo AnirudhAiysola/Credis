@@ -832,6 +832,17 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["KEYS"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string response = "*" + std::to_string(kv_store.size()) + "\r\n";
+
+        for (auto &it : kv_store)
+        {
+            response += build_bulk_string(it.first);
+        }
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();
