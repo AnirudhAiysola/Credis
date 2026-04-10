@@ -7,6 +7,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include "config.h"
 
 static std::unordered_map<std::string, CommandHandler> command_map = []()
 {
@@ -815,6 +816,21 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
+    };
+    m["CONFIG GET"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::string response = "*" + std::to_string(2) + "\r\n";
+        if (parsed[2] == "dir")
+        {
+            response += build_bulk_string("dir");
+            response += build_bulk_string(config_dir);
+        }
+        else if (parsed[2] == "dbfilename")
+        {
+            response += build_bulk_string("dbfilename");
+            response += build_bulk_string(config_dbfilename);
+        }
+        send(client_fd, response.c_str(), response.size(), 0);
     };
 
     return m;
