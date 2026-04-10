@@ -844,7 +844,9 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         send(client_fd, "+QUEUED\r\n", 9, 0);
         return;
     }
-    auto it = command_map.find(parsed[0]);
+    auto it = parsed.size() > 1 ? command_map.find(parsed[0] + " " + parsed[1]) : command_map.end();
+    if (it == command_map.end())
+        it = command_map.find(parsed[0]);
     if (it != command_map.end())
         it->second(client_fd, parsed);
     else
