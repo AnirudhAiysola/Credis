@@ -873,6 +873,14 @@ void handle_command(int client_fd, std::vector<std::string> &parsed)
         send(client_fd, "+QUEUED\r\n", 9, 0);
         return;
     }
+    std::string cmd_lower = parsed[0];
+    std::transform(cmd_lower.begin(), cmd_lower.end(), cmd_lower.begin(), ::tolower);
+    if (client_subscriptions[client_fd].size() > 0 && !sub_commands.count(parsed[0]))
+    {
+        std::string err = "-ERR Can't execute '" + cmd_lower + "': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\r\n";
+        send(client_fd, err.c_str(), err.size(), 0);
+        return;
+    }
     auto it = parsed.size() > 1 ? command_map.find(parsed[0] + " " + parsed[1]) : command_map.end();
     if (it == command_map.end())
         it = command_map.find(parsed[0]);
