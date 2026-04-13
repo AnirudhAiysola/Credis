@@ -15,6 +15,14 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
     m["PING"] = [](int client_fd, std::vector<std::string> &parsed)
     {
+        if (client_subscriptions[client_fd].size() > 0)
+        {
+            std::string response = "*" + std::to_string(2) + "\r\n";
+            response += build_bulk_string("pong");
+            response += build_bulk_string("");
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
         if (inTransaction[client_fd])
         {
             transaction_responses[client_fd].push_back("+PONG\r\n");
