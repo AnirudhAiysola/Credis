@@ -19,3 +19,4 @@ int master_fd = -1;
 std::unordered_map<int, long long> replica_ack_counts;
 long long master_byte_counter = 0;
 std::unordered_map<std::string, std::vector<int>> subscribers;
+std::unordered_map<int, std::unordered_set<std::string>> client_subscriptions;

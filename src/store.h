@@ -7,6 +7,7 @@
 #include <queue>
 #include <map>
 #include <utility>
+#include <unordered_set>
 
 struct StreamComparator
 {
@@ -41,3 +42,4 @@ extern int master_fd;
 extern std::unordered_map<int, long long> replica_ack_counts;
 extern long long master_byte_counter;
 extern std::unordered_map<std::string, std::vector<int>> subscribers;
+extern std::unordered_map<int, std::unordered_set<std::string>> client_subscriptions;
