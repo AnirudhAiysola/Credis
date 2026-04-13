@@ -857,7 +857,7 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         if (!client_subscriptions[client_fd].count(parsed[1]))
         {
             client_subscriptions[client_fd].insert(parsed[1]);
-            subscribers[parsed[1]].push_back(client_fd);
+            subscribers[parsed[1]].insert(client_fd);
         }
 
         std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::tolower);
@@ -882,6 +882,16 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             message += build_bulk_string(parsed[2]);
             send(subscriber_fd, message.c_str(), message.size(), 0);
         }
+    };
+    m["UNSUBSCRIBE"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        client_subscriptions[client_fd].erase(parsed[1]);
+        subscribers[parsed[1]].erase(client_fd);
+        std::string response = "*" + std::to_string(3) + "\r\n";
+        response += build_bulk_string("unsubscribe");
+        response += build_bulk_string(parsed[1]);
+        response += ":" + std::to_string(client_subscriptions[client_fd].size()) + "\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
     };
 
     return m;
