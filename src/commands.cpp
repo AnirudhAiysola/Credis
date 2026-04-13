@@ -873,6 +873,15 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
     {
         std::string response = ":" + std::to_string(subscribers[parsed[1]].size()) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
+
+        for (int subscriber_fd : subscribers[parsed[1]])
+        {
+            std::string message = "*" + std::to_string(3) + "\r\n";
+            message += build_bulk_string("message");
+            message += build_bulk_string(parsed[1]);
+            message += build_bulk_string(parsed[2]);
+            send(subscriber_fd, message.c_str(), message.size(), 0);
+        }
     };
 
     return m;
