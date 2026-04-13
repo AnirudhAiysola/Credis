@@ -869,6 +869,11 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["PUBLISH"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::string response = ":" + std::to_string(subscribers[parsed[1]].size()) + "\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();
