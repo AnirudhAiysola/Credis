@@ -843,6 +843,20 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         }
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["SUBSCRIBE"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        subscribers[parsed[1]].push_back(client_fd);
+
+        std::transform(parsed[0].begin(), parsed[0].end(), parsed[0].begin(), ::tolower);
+        std::string response = "*" + std::to_string(3) + "\r\n";
+
+        response += build_bulk_string(parsed[0]);
+        response += build_bulk_string(parsed[1]);
+        response += ":1\r\n";
+
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();

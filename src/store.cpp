@@ -18,3 +18,4 @@ long long byte_counter = 0;
 int master_fd = -1;
 std::unordered_map<int, long long> replica_ack_counts;
 long long master_byte_counter = 0;
+std::unordered_map<std::string, std::vector<int>> subscribers;
