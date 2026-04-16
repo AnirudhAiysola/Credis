@@ -921,6 +921,46 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::string response = ":" + std::to_string(count) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["ZRANK"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        std::string key = parsed[1];
+        if (kv_store.count(key) && !std::holds_alternative<Set>(kv_store[key]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        if (!kv_store.count(key))
+        {
+            std::string response = "$-1\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        Set &st = std::get<Set>(kv_store[key]);
+        if (!st.mem_score.count(parsed[2]))
+        {
+            std::string response = "$-1\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        std::pair<double, std::string> target = {st.mem_score[parsed[2]], parsed[2]};
+
+        long long pos = 0;
+        auto it = st.scores.begin();
+
+        while (it != st.scores.end())
+        {
+            if (*it == target)
+            {
+                break;
+            }
+            pos++;
+            it++;
+        }
+        std::string response = ":" + std::to_string(pos) + "\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();
