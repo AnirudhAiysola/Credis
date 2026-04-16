@@ -961,6 +961,57 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::string response = ":" + std::to_string(pos) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["ZRANGE"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+
+        std::string key = parsed[1];
+        if (kv_store.count(key) && !std::holds_alternative<Set>(kv_store[key]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        if (!kv_store.count(key))
+        {
+            std::string response = "*" + std::to_string(0) + "\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        Set &st = std::get<Set>(kv_store[key]);
+        int start = std::stoi(parsed[2]), end = std::stoi(parsed[3]) > st.scores.size() ? st.scores.size() - 1 : std::stoi(parsed[3]);
+
+        if (st.scores.size() == 0 || start > end || start >= st.scores.size())
+        {
+            std::string response = "*" + std::to_string(0) + "\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        long long pos = 0;
+        std::vector<std::string> data;
+
+        auto it = st.scores.begin();
+
+        while (it != st.scores.end())
+        {
+            if (pos > end)
+                break;
+
+            if (pos >= start)
+            {
+                data.push_back(it->second);
+            }
+            pos++;
+            it++;
+        }
+        std::string response = "*" + std::to_string(data.size()) + "\r\n";
+
+        for (auto &it : data)
+        {
+            response += build_bulk_string(it);
+        }
+
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();
