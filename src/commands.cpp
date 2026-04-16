@@ -893,6 +893,34 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         response += ":" + std::to_string(client_subscriptions[client_fd].size()) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["ZADD"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string key = parsed[1];
+
+        long long count = 0;
+
+        if (kv_store.count(key) && !std::holds_alternative<Set>(kv_store[key]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+
+        if (!kv_store.count(key))
+        {
+            kv_store[key] = Set{};
+        }
+        Set &st = std::get<Set>(kv_store[key]);
+
+        if (!st.mem_score.count(parsed[3]))
+        {
+            count++;
+            st.scores.insert({std::stod(parsed[2]), parsed[3]});
+            st.mem_score[parsed[3]] = std::stod(parsed[2]);
+        }
+        std::string response = ":" + std::to_string(count) + "\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();

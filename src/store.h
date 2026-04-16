@@ -7,6 +7,7 @@
 #include <queue>
 #include <map>
 #include <utility>
+#include <set>
 #include <unordered_set>
 
 struct StreamComparator
@@ -23,10 +24,15 @@ struct StreamComparator
     }
 };
 
+struct Set
+{
+    std::set<std::pair<double, std::string>> scores;
+    std::unordered_map<std::string, double> mem_score;
+};
+
 extern std::mutex kv_store_mutex;
 extern std::condition_variable kv_store_cv;
-extern std::unordered_map<std::string, std::variant<std::string, std::deque<std::string>,
-                                                    std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>>
+extern std::unordered_map<std::string, std::variant<std::string, Set, std::deque<std::string>, std::map<std::string, std::vector<std::pair<std::string, std::string>>, StreamComparator>>>
     kv_store;
 extern std::unordered_map<std::string, long long> kv_store_expiry;
 extern std::unordered_map<std::string, std::queue<std::condition_variable *>> waiting_clients;
