@@ -1088,6 +1088,36 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
 
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["ZREM"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string key = parsed[1];
+        if (kv_store.count(key) && !std::holds_alternative<Set>(kv_store[key]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        if (!kv_store.count(key))
+        {
+            std::string response = ":0\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        Set &st = std::get<Set>(kv_store[key]);
+        long long count = 0;
+        for (int i = 2; i < parsed.size(); i++)
+        {
+            if (st.mem_score.count(parsed[i]))
+            {
+                double score = st.mem_score[parsed[i]];
+                st.scores.erase({score, parsed[i]});
+                st.mem_score.erase(parsed[i]);
+                count++;
+            }
+        }
+        std::string response = ":" + std::to_string(count) + "\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();
