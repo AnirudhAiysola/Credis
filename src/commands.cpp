@@ -980,6 +980,15 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         Set &st = std::get<Set>(kv_store[key]);
         int start = std::stoi(parsed[2]), end = std::stoi(parsed[3]) > st.scores.size() ? st.scores.size() - 1 : std::stoi(parsed[3]);
 
+        if (start < 0)
+        {
+            start = st.scores.size() + start;
+        }
+        if (end < 0)
+        {
+            end = st.scores.size() + end;
+        }
+
         if (st.scores.size() == 0 || start > end || start >= st.scores.size())
         {
             std::string response = "*" + std::to_string(0) + "\r\n";
