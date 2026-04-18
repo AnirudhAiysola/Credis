@@ -982,13 +982,9 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         int end = std::stoi(parsed[3]);
 
         if (start < 0)
-        {
-            start = st.scores.size() + start;
-        }
+            start = std::max(0, (int)st.scores.size() + start);
         if (end < 0)
-        {
-            end = st.scores.size() + end;
-        }
+            end = std::max(0, (int)st.scores.size() + end);
 
         if (end >= st.scores.size())
         {
