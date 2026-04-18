@@ -918,6 +918,13 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             st.scores.insert({std::stod(parsed[2]), parsed[3]});
             st.mem_score[parsed[3]] = std::stod(parsed[2]);
         }
+        else
+        {
+            double old_score = st.mem_score[parsed[3]];
+            st.scores.erase({old_score, parsed[3]});
+            st.scores.insert({std::stod(parsed[2]), parsed[3]});
+            st.mem_score[parsed[3]] = std::stod(parsed[2]);
+        }
         std::string response = ":" + std::to_string(count) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
@@ -1020,6 +1027,25 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             response += build_bulk_string(it);
         }
 
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
+    m["ZCARD"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string key = parsed[1];
+        if (kv_store.count(key) && !std::holds_alternative<Set>(kv_store[key]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        if (!kv_store.count(key))
+        {
+            std::string response = ":0\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        Set &st = std::get<Set>(kv_store[key]);
+        std::string response = ":" + std::to_string(st.scores.size()) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
 
