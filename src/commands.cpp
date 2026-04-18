@@ -8,6 +8,8 @@
 #include <iostream>
 #include <thread>
 #include "config.h"
+#include <sstream>
+#include <iomanip>
 
 static std::unordered_map<std::string, CommandHandler> command_map = []()
 {
@@ -1071,7 +1073,9 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             return;
         }
         double score = st.mem_score[parsed[2]];
-        std::string response = std::to_string(score);
+        std::ostringstream oss;
+        oss << std::setprecision(17) << score;
+        std::string response = oss.str();
 
         while (!response.empty() && response.back() == '0')
         {
