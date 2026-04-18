@@ -978,7 +978,8 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             return;
         }
         Set &st = std::get<Set>(kv_store[key]);
-        int start = std::stoi(parsed[2]), end = std::stoi(parsed[3]) > st.scores.size() ? st.scores.size() - 1 : std::stoi(parsed[3]);
+        int start = std::stoi(parsed[2]);
+        int end = std::stoi(parsed[3]);
 
         if (start < 0)
         {
@@ -989,6 +990,10 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
             end = st.scores.size() + end;
         }
 
+        if (end >= st.scores.size())
+        {
+            end = st.scores.size() - 1;
+        }
         if (st.scores.size() == 0 || start > end || start >= st.scores.size())
         {
             std::string response = "*" + std::to_string(0) + "\r\n";
