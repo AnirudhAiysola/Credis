@@ -1048,6 +1048,42 @@ static std::unordered_map<std::string, CommandHandler> command_map = []()
         std::string response = ":" + std::to_string(st.scores.size()) + "\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
     };
+    m["ZSCORE"] = [](int client_fd, std::vector<std::string> &parsed)
+    {
+        std::lock_guard<std::mutex> lock(kv_store_mutex);
+        std::string key = parsed[1];
+        if (kv_store.count(key) && !std::holds_alternative<Set>(kv_store[key]))
+        {
+            send(client_fd, "-ERR Operation against a key holding the wrong kind of value\r\n", 63, 0);
+            return;
+        }
+        if (!kv_store.count(key))
+        {
+            std::string response = "$-1\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        Set &st = std::get<Set>(kv_store[key]);
+        if (!st.mem_score.count(parsed[2]))
+        {
+            std::string response = "$-1\r\n";
+            send(client_fd, response.c_str(), response.size(), 0);
+            return;
+        }
+        double score = st.mem_score[parsed[2]];
+        std::string response = std::to_string(score);
+
+        while (!response.empty() && response.back() == '0')
+        {
+            response.pop_back();
+        }
+        if (!response.empty() && response.back() == '.')
+            response.pop_back();
+
+        response = build_bulk_string(response);
+
+        send(client_fd, response.c_str(), response.size(), 0);
+    };
 
     return m;
 }();
